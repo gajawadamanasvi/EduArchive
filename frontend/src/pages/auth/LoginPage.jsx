@@ -115,10 +115,10 @@ export const LoginPage = () => {
               </div>
               <div>
                 <h1 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
-                  DOCUVERIFY
+                  EduArchive
                 </h1>
-                <div style={{ fontSize: '0.78rem', color: '#93c5fd' }}>
-                  Student Document Verification & Retrieval System
+                <div style={{ fontSize: '0.78rem', color: '#93c5fd', lineHeight: 1.35, marginTop: 2 }}>
+                  Institutional Digital Certification Management and Verification System
                 </div>
               </div>
             </div>

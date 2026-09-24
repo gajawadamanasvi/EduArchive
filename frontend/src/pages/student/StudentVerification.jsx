@@ -73,7 +73,7 @@ export const StudentVerification = () => {
         </div>
         <div>
           <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: '#f8fafc', marginBottom: 4 }}>
-            How Verification Works in DOCUVERIFY
+            How Verification Works in EduArchive
           </h4>
           <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
             Each certificate undergoes automated OCR neural analysis to match student name, roll number, course, and institutional seals against the college database. The issuing college administration provides final cryptographic attestation.
