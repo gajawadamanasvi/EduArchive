@@ -1,0 +1,14 @@
+{
+  "name": "student-doc-verification-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Student Document Verification and Retrieval System",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "start:backend": "npm --prefix backend start",
+    "seed": "npm --prefix backend run seed",
+    "build": "npm --prefix frontend run build"
+  }
+}
