@@ -2467,6 +2467,61 @@
       "details": "{\"role\":\"SUPER_ADMIN\",\"email\":\"superadmin@system.edu\"}",
       "timestamp": "2026-09-25T13:05:02.736Z",
       "created_at": "2026-09-25T13:05:02.736Z"
+    },
+    {
+      "id": "audit_1790345610660_rtx8n3r",
+      "user_id": "usr_student_1",
+      "action": "USER_LOGIN",
+      "entity_type": "USER",
+      "entity_id": "usr_student_1",
+      "ip_address": "::1",
+      "details": "{\"role\":\"STUDENT\",\"email\":\"aarav.sharma@student.edu\"}",
+      "timestamp": "2026-09-25T14:13:30.660Z",
+      "created_at": "2026-09-25T14:13:30.661Z"
+    },
+    {
+      "id": "audit_1790345633869_4txu0a8",
+      "user_id": "usr_admin_tkrec",
+      "action": "USER_LOGIN",
+      "entity_type": "USER",
+      "entity_id": "usr_admin_tkrec",
+      "ip_address": "::1",
+      "details": "{\"role\":\"COLLEGE_ADMIN\",\"email\":\"admin@tkrec.ac.in\"}",
+      "timestamp": "2026-09-25T14:13:53.869Z",
+      "created_at": "2026-09-25T14:13:53.869Z"
+    },
+    {
+      "id": "audit_1790345668086_79yzveu",
+      "user_id": "usr_superadmin",
+      "action": "USER_LOGIN",
+      "entity_type": "USER",
+      "entity_id": "usr_superadmin",
+      "ip_address": "::1",
+      "details": "{\"role\":\"SUPER_ADMIN\",\"email\":\"superadmin@system.edu\"}",
+      "timestamp": "2026-09-25T14:14:28.087Z",
+      "created_at": "2026-09-25T14:14:28.087Z"
+    },
+    {
+      "id": "audit_1790345679519_t79ffl8",
+      "user_id": "usr_superadmin",
+      "action": "USER_LOGIN",
+      "entity_type": "USER",
+      "entity_id": "usr_superadmin",
+      "ip_address": "::1",
+      "details": "{\"role\":\"SUPER_ADMIN\",\"email\":\"superadmin@system.edu\"}",
+      "timestamp": "2026-09-25T14:14:39.519Z",
+      "created_at": "2026-09-25T14:14:39.519Z"
+    },
+    {
+      "id": "audit_1790345742224_ykje6o1",
+      "user_id": "usr_admin_tkrec",
+      "action": "USER_LOGIN",
+      "entity_type": "USER",
+      "entity_id": "usr_admin_tkrec",
+      "ip_address": "::1",
+      "details": "{\"role\":\"COLLEGE_ADMIN\",\"email\":\"admin@tkrec.ac.in\"}",
+      "timestamp": "2026-09-25T14:15:42.224Z",
+      "created_at": "2026-09-25T14:15:42.224Z"
     }
   ],
   "settings": {
