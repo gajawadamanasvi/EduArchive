@@ -10,9 +10,12 @@ import {
   Layers, 
   HelpCircle,
   Check,
-  Send
+  Send,
+  Camera,
+  ScanLine
 } from 'lucide-react';
 import { api } from '../services/api.js';
+import { CameraOCRScanner } from './CameraOCRScanner.jsx';
 
 export const AIVerificationModal = ({ 
   document, 
@@ -25,14 +28,15 @@ export const AIVerificationModal = ({
   const [scanning, setScanning] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [remarks, setRemarks] = useState('');
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleRunScan = async () => {
+  const handleRunScan = async (customOcr = null) => {
     if (!document) return;
     setScanning(true);
     setError(null);
     try {
-      const data = await api.runAIScan(document.id);
+      const data = await api.runAIScan(document.id, customOcr);
       if (data.success && data.aiResult) {
         setAiResult(data.aiResult);
         if (onStatusUpdated) onStatusUpdated();
@@ -41,6 +45,12 @@ export const AIVerificationModal = ({
       setError(err.message || 'Failed to execute AI OCR scan.');
     } finally {
       setScanning(false);
+    }
+  };
+
+  const handleCameraCapture = async ({ ocrText }) => {
+    if (ocrText) {
+      await handleRunScan(ocrText);
     }
   };
 
@@ -146,15 +156,26 @@ export const AIVerificationModal = ({
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: 460, margin: '0 auto 18px' }}>
                 Execute the AI Verification Agent to extract OCR certificate entities and cross-reference against authorized institutional registry records.
               </p>
-              <button
-                onClick={handleRunScan}
-                disabled={scanning}
-                className="btn-primary"
-                style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', padding: '10px 22px' }}
-              >
-                <Sparkles size={16} />
-                <span>{scanning ? 'Running AI OCR Scan...' : 'Run AI Verification Scan Now'}</span>
-              </button>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => handleRunScan()}
+                  disabled={scanning}
+                  className="btn-primary"
+                  style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', padding: '10px 22px' }}
+                >
+                  <Sparkles size={16} />
+                  <span>{scanning ? 'Running AI OCR Scan...' : 'Run AI Verification Scan'}</span>
+                </button>
+                <button
+                  onClick={() => setShowCameraScanner(true)}
+                  disabled={scanning}
+                  className="btn-secondary"
+                  style={{ borderColor: 'rgba(59, 130, 246, 0.5)', color: '#60a5fa', padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 8 }}
+                >
+                  <Camera size={16} />
+                  <span>Live Camera OCR Scan</span>
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -276,10 +297,19 @@ export const AIVerificationModal = ({
                 {aiResult.disclaimer}
               </div>
 
-              {/* Re-run Scan button */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
                 <button
-                  onClick={handleRunScan}
+                  onClick={() => setShowCameraScanner(true)}
+                  disabled={scanning}
+                  className="btn-secondary"
+                  style={{ padding: '6px 14px', fontSize: '0.8rem', borderColor: 'rgba(59, 130, 246, 0.4)', color: '#60a5fa' }}
+                >
+                  <Camera size={14} />
+                  <span>Live Camera Re-Scan</span>
+                </button>
+                <button
+                  onClick={() => handleRunScan()}
                   disabled={scanning}
                   className="btn-secondary"
                   style={{ padding: '6px 14px', fontSize: '0.8rem' }}
@@ -344,6 +374,13 @@ export const AIVerificationModal = ({
 
         </div>
       </div>
+
+      {showCameraScanner && (
+        <CameraOCRScanner
+          onCapture={handleCameraCapture}
+          onClose={() => setShowCameraScanner(false)}
+        />
+      )}
     </div>
   );
 };

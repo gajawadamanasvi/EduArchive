@@ -76,24 +76,39 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, gmail, username } = req.body;
+    const identifier = String(email || gmail || username || '').trim().toLowerCase();
+    const rawPassword = String(password || '').trim();
 
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Please provide both email and password.' });
+    if (!identifier || !rawPassword) {
+      return res.status(400).json({ success: false, message: 'Please provide both email/Roll No and password.' });
     }
 
-    const user = db.findOne('users', u => u.email.toLowerCase() === email.toLowerCase());
+    // 1. Match by Email / Gmail
+    let user = db.findOne('users', u => u.email && u.email.trim().toLowerCase() === identifier);
+
+    // 2. If not found by email, check if identifier is a student's Roll Number or Registration Number
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials.' });
+      const studentMatch = db.findOne('students', s => 
+        (s.roll_number && s.roll_number.trim().toLowerCase() === identifier) ||
+        (s.student_id_number && s.student_id_number.trim().toLowerCase() === identifier)
+      );
+      if (studentMatch) {
+        user = db.findById('users', studentMatch.user_id);
+      }
+    }
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials: No account found with this email or Roll Number.' });
     }
 
     if (user.status === 'SUSPENDED' || user.status === 'INACTIVE') {
-      return res.status(403).json({ success: false, message: 'Account is inactive or suspended.' });
+      return res.status(403).json({ success: false, message: 'Account is inactive or suspended. Please contact your college administrator.' });
     }
 
-    const isMatch = await comparePassword(password, user.password_hash);
+    const isMatch = await comparePassword(rawPassword, user.password_hash);
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials.' });
+      return res.status(401).json({ success: false, message: 'Invalid credentials: Password does not match.' });
     }
 
     let studentProfile = null;

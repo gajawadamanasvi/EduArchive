@@ -6,6 +6,7 @@ import { DocumentCard } from '../../components/DocumentCard.jsx';
 import { VerificationBadge } from '../../components/VerificationBadge.jsx';
 import { AIVerificationModal } from '../../components/AIVerificationModal.jsx';
 import { PhysicalIssueModal } from '../../components/PhysicalIssueModal.jsx';
+import { CertificateViewerModal } from '../../components/CertificateViewerModal.jsx';
 import { 
   Building2, 
   Users, 
@@ -29,6 +30,7 @@ export const CollegeDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedInspectDoc, setSelectedInspectDoc] = useState(null);
   const [selectedPhysicalDoc, setSelectedPhysicalDoc] = useState(null);
+  const [selectedViewDoc, setSelectedViewDoc] = useState(null);
 
   const loadDashboardData = async () => {
     try {
@@ -66,7 +68,13 @@ export const CollegeDashboard = () => {
       const url = window.URL.createObjectURL(blob);
       const a = window.document.createElement('a');
       a.href = url;
-      a.download = `${doc.document_type.replace(/[^a-zA-Z0-9]/g, '_')}_Verified.svg`;
+      let ext = '.svg';
+      if (blob.type && blob.type.includes('pdf')) ext = '.pdf';
+      else if (blob.type && blob.type.includes('png')) ext = '.png';
+      else if (blob.type && (blob.type.includes('jpeg') || blob.type.includes('jpg'))) ext = '.jpg';
+      const cleanTitle = (doc.document_type || doc.title || 'Certificate').replace(/[^a-zA-Z0-9]/g, '_');
+      const roll = doc.student?.roll_number ? `_${doc.student.roll_number}` : '';
+      a.download = `${cleanTitle}${roll}_Verified${ext}`;
       window.document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -77,7 +85,7 @@ export const CollegeDashboard = () => {
   };
 
   const handleView = (doc) => {
-    window.open(`/api/documents/${doc.id}/view`, '_blank');
+    setSelectedViewDoc(doc);
   };
 
   return (
@@ -278,6 +286,13 @@ export const CollegeDashboard = () => {
           document={selectedPhysicalDoc}
           onClose={() => setSelectedPhysicalDoc(null)}
           onUpdated={loadDashboardData}
+        />
+      )}
+
+      {selectedViewDoc && (
+        <CertificateViewerModal
+          document={selectedViewDoc}
+          onClose={() => setSelectedViewDoc(null)}
         />
       )}
 

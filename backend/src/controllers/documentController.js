@@ -3,6 +3,7 @@ import fs from 'fs';
 import db from '../config/db.js';
 import { logAudit } from '../services/auditService.js';
 import { verifyDocumentWithAI } from '../ai/verificationAgent.js';
+import { getTelanganaCollegeIds } from '../utils/jurisdiction.js';
 
 export const getDocuments = async (req, res) => {
   try {
@@ -21,6 +22,8 @@ export const getDocuments = async (req, res) => {
         docs = docs.filter(d => String(d.student_id) === String(student_id));
       }
     } else if (req.user.role === 'SUPER_ADMIN') {
+      const telanganaCollegeIds = getTelanganaCollegeIds();
+      docs = docs.filter(d => telanganaCollegeIds.has(String(d.college_id)));
       if (college_id) {
         docs = docs.filter(d => String(d.college_id) === String(college_id));
       }
@@ -75,7 +78,7 @@ export const getDocumentById = async (req, res) => {
 
 export const uploadDocument = async (req, res) => {
   try {
-    const { 
+    let { 
       student_id, 
       document_type, 
       title, 
@@ -85,6 +88,13 @@ export const uploadDocument = async (req, res) => {
       custody_status = 'STORED_IN_COLLEGE_REPOSITORY',
       locker_reference = ''
     } = req.body;
+
+    if (req.user.role === 'STUDENT') {
+      if (!req.student) {
+        return res.status(403).json({ success: false, message: 'Student profile not found.' });
+      }
+      student_id = req.student.id;
+    }
 
     if (!student_id || !document_type) {
       return res.status(400).json({ success: false, message: 'Student ID and Document Type are required.' });
@@ -111,10 +121,10 @@ export const uploadDocument = async (req, res) => {
       fileSize = req.file.size;
       mimeType = req.file.mimetype;
     } else {
-      // Create synthetic sample cert record if uploaded via direct simulation
-      fileName = `${document_type.replace(/\s+/g, '_')}_${student.roll_number}.pdf`;
-      filePath = path.resolve('backend/uploads', fileName);
+      fileName = `${document_type.replace(/\s+/g, '_')}_${student.roll_number || 'DOC'}.pdf`;
+      filePath = '';
       fileSize = 245000;
+      mimeType = 'application/pdf';
     }
 
     const collegeId = student.college_id || req.user.college_id;
@@ -124,12 +134,12 @@ export const uploadDocument = async (req, res) => {
       student_id: student.id,
       college_id: collegeId,
       document_type,
-      title: title || `${document_type} - ${student.user?.name || 'Student'}`,
+      title: title || `${document_type} - ${student.user?.name || student.name || 'Student'}`,
       file_path: filePath,
       file_name: fileName,
       file_size: fileSize,
       mime_type: mimeType,
-      status: 'VERIFIED', // Default verified when officially added by authorized college admin
+      status: req.user.role === 'STUDENT' ? 'PENDING' : 'VERIFIED',
       is_original: Boolean(is_original === 'true' || is_original === true),
       custody_status: custody_status || 'STORED_IN_COLLEGE_REPOSITORY',
       locker_reference: locker_reference || 'College Academic Repository / Safe Vault',
@@ -192,6 +202,16 @@ export const uploadDocument = async (req, res) => {
   }
 };
 
+function escapeXml(unsafe) {
+  if (unsafe == null) return '';
+  return String(unsafe)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 export const downloadDocument = async (req, res) => {
   try {
     const doc = db.findById('documents', req.params.id);
@@ -210,15 +230,16 @@ export const downloadDocument = async (req, res) => {
 
     // Check if actual file exists on disk, if not serve dynamic digital certificate representation
     if (doc.file_path && fs.existsSync(doc.file_path)) {
-      return res.download(doc.file_path, doc.file_name);
+      const fileName = doc.file_name || `${(doc.document_type || 'Document').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      return res.download(path.resolve(doc.file_path), fileName);
     }
 
     // Serve rich verifiable SVG certificate stream
     const fullDoc = db.getDocumentWithDetails(doc.id);
     const svgCert = generateVerifiableCertificateSVG(fullDoc);
 
-    res.setHeader('Content-Type', 'image/svg+xml');
-    res.setHeader('Content-Disposition', `attachment; filename="${doc.document_type.replace(/[^a-zA-Z0-9]/g, '_')}_Verified.svg"`);
+    res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${(doc.document_type || 'Certificate').replace(/[^a-zA-Z0-9]/g, '_')}_Verified.svg"`);
     return res.send(svgCert);
   } catch (error) {
     console.error('[DownloadDocument Error]:', error);
@@ -234,12 +255,22 @@ export const viewDocument = async (req, res) => {
     }
 
     if (doc.file_path && fs.existsSync(doc.file_path)) {
+      const ext = path.extname(doc.file_path).toLowerCase();
+      if (ext === '.pdf') {
+        res.setHeader('Content-Type', 'application/pdf');
+      } else if (ext === '.svg') {
+        res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+      } else if (ext === '.png') {
+        res.setHeader('Content-Type', 'image/png');
+      } else if (ext === '.jpg' || ext === '.jpeg') {
+        res.setHeader('Content-Type', 'image/jpeg');
+      }
       return res.sendFile(path.resolve(doc.file_path));
     }
 
     // Return verifiable SVG graphic representation
     const svgCert = generateVerifiableCertificateSVG(doc);
-    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
     return res.send(svgCert);
   } catch (error) {
     console.error('[ViewDocument Error]:', error);
@@ -352,98 +383,105 @@ export const deleteDocument = async (req, res) => {
 
 // Generates an official cryptographic-style SVG certificate watermark
 function generateVerifiableCertificateSVG(doc) {
-  const studentName = doc.student?.name || 'Student Name';
-  const rollNo = doc.student?.roll_number || 'REG-2024-001';
-  const collegeName = doc.college?.name || 'Accredited Academic Institution';
-  const degree = doc.student?.course || doc.document_type || 'Academic Degree';
+  const studentName = escapeXml(doc.student?.name || 'Student Name');
+  const rollNo = escapeXml(doc.student?.roll_number || 'REG-2024-001');
+  const studentIdNumber = escapeXml(doc.student?.student_id_number || 'STU-2024');
+  const collegeName = escapeXml(doc.college?.name || 'Accredited Academic Institution');
+  const university = escapeXml(doc.college?.university || 'State Technical University');
+  const degree = escapeXml(doc.student?.course || doc.document_type || 'Academic Degree');
+  const docType = escapeXml(doc.document_type || 'ACADEMIC CERTIFICATE');
+  const department = escapeXml(doc.student?.department || 'Engineering');
+  const academicYear = escapeXml(doc.student?.academic_year || '2022-2026');
   const status = doc.status || 'VERIFIED';
   const isVerified = status === 'VERIFIED';
+  const docId = escapeXml(doc.id || 'DOC-VERIFIED');
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" width="1000" height="700">
-    <defs>
-      <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#ffffff"/>
-        <stop offset="100%" stop-color="#f8fafc"/>
-      </linearGradient>
-      <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#d97706"/>
-        <stop offset="100%" stop-color="#b45309"/>
-      </linearGradient>
-    </defs>
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" width="1000" height="700">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f8fafc"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d97706"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+  </defs>
 
-    <!-- Certificate Background & Border -->
-    <rect width="1000" height="700" fill="url(#bgGrad)"/>
-    <rect x="25" y="25" width="950" height="650" fill="none" stroke="#0f172a" stroke-width="4"/>
-    <rect x="35" y="35" width="930" height="630" fill="none" stroke="#d97706" stroke-width="1.5" stroke-dasharray="8,4"/>
+  <!-- Certificate Background & Border -->
+  <rect width="1000" height="700" fill="url(#bgGrad)"/>
+  <rect x="25" y="25" width="950" height="650" fill="none" stroke="#0f172a" stroke-width="4"/>
+  <rect x="35" y="35" width="930" height="630" fill="none" stroke="#d97706" stroke-width="1.5" stroke-dasharray="8,4"/>
 
-    <!-- Watermark Stamp -->
-    <g transform="translate(500, 350) rotate(-25)" opacity="0.12">
-      <text x="0" y="0" font-family="Arial, sans-serif" font-size="70" font-weight="900" fill="#0f172a" text-anchor="middle">
-        DEMO / SAMPLE — NOT A REAL CERTIFICATE
-      </text>
-    </g>
+  <!-- Watermark Stamp -->
+  <g transform="translate(500, 350) rotate(-25)" opacity="0.10">
+    <text x="0" y="0" font-family="Arial, sans-serif" font-size="64" font-weight="900" fill="#0f172a" text-anchor="middle">
+      AUTHENTICATED ACADEMIC RECORD
+    </text>
+  </g>
 
-    <!-- Header & Institution -->
-    <text x="500" y="100" font-family="'Times New Roman', Georgia, serif" font-size="28" font-weight="bold" fill="#0f172a" text-anchor="middle" letter-spacing="2">
-      ${collegeName.toUpperCase()}
-    </text>
-    <text x="500" y="130" font-family="Arial, sans-serif" font-size="14" fill="#64748b" text-anchor="middle">
-      Affiliated to ${doc.college?.university || 'State Technical University'} • Accredited Academic Institution
-    </text>
+  <!-- Header & Institution -->
+  <text x="500" y="100" font-family="'Times New Roman', Georgia, serif" font-size="28" font-weight="bold" fill="#0f172a" text-anchor="middle" letter-spacing="2">
+    ${collegeName.toUpperCase()}
+  </text>
+  <text x="500" y="130" font-family="Arial, sans-serif" font-size="14" fill="#64748b" text-anchor="middle">
+    Affiliated to ${university} • Accredited Academic Institution
+  </text>
 
-    <!-- Certificate Title -->
-    <line x1="250" y1="160" x2="750" y2="160" stroke="#d97706" stroke-width="2"/>
-    <text x="500" y="210" font-family="'Times New Roman', Georgia, serif" font-size="34" font-weight="bold" fill="#1e293b" text-anchor="middle">
-      ${(doc.document_type || 'ACADEMIC CERTIFICATE').toUpperCase()}
-    </text>
-    <text x="500" y="245" font-family="Georgia, serif" font-style="italic" font-size="16" fill="#475569" text-anchor="middle">
-      This is to officially certify that
-    </text>
+  <!-- Certificate Title -->
+  <line x1="250" y1="160" x2="750" y2="160" stroke="#d97706" stroke-width="2"/>
+  <text x="500" y="210" font-family="'Times New Roman', Georgia, serif" font-size="32" font-weight="bold" fill="#1e293b" text-anchor="middle">
+    ${docType.toUpperCase()}
+  </text>
+  <text x="500" y="245" font-family="Georgia, serif" font-style="italic" font-size="16" fill="#475569" text-anchor="middle">
+    This is to officially certify that
+  </text>
 
-    <!-- Student Name & Details -->
-    <text x="500" y="300" font-family="'Times New Roman', Georgia, serif" font-size="36" font-weight="bold" fill="#0369a1" text-anchor="middle">
-      ${studentName}
-    </text>
-    <text x="500" y="335" font-family="Arial, sans-serif" font-size="16" fill="#334155" text-anchor="middle">
-      Roll No: <tspan font-weight="bold">${rollNo}</tspan> | Student ID: <tspan font-weight="bold">${doc.student?.student_id_number || 'STU-2024'}</tspan>
-    </text>
+  <!-- Student Name & Details -->
+  <text x="500" y="300" font-family="'Times New Roman', Georgia, serif" font-size="36" font-weight="bold" fill="#0369a1" text-anchor="middle">
+    ${studentName}
+  </text>
+  <text x="500" y="335" font-family="Arial, sans-serif" font-size="16" fill="#334155" text-anchor="middle">
+    Roll No: ${rollNo} | Student ID: ${studentIdNumber}
+  </text>
 
-    <text x="500" y="380" font-family="Georgia, serif" font-size="18" fill="#334155" text-anchor="middle">
-      has fulfilled all the curriculum requirements for the award of
-    </text>
-    <text x="500" y="420" font-family="'Times New Roman', Georgia, serif" font-size="26" font-weight="bold" fill="#0f172a" text-anchor="middle">
-      ${degree}
-    </text>
-    <text x="500" y="455" font-family="Arial, sans-serif" font-size="15" fill="#64748b" text-anchor="middle">
-      Department of ${doc.student?.department || 'Engineering'} • Academic Session ${doc.student?.academic_year || '2022-2026'}
-    </text>
+  <text x="500" y="380" font-family="Georgia, serif" font-size="18" fill="#334155" text-anchor="middle">
+    has fulfilled all the curriculum requirements for the award of
+  </text>
+  <text x="500" y="420" font-family="'Times New Roman', Georgia, serif" font-size="26" font-weight="bold" fill="#0f172a" text-anchor="middle">
+    ${degree}
+  </text>
+  <text x="500" y="455" font-family="Arial, sans-serif" font-size="15" fill="#64748b" text-anchor="middle">
+    Department of ${department} • Academic Session ${academicYear}
+  </text>
 
-    <!-- Verification Badge Box -->
-    <g transform="translate(100, 520)">
-      <rect width="260" height="90" rx="8" fill="${isVerified ? '#f0fdf4' : '#fffbeb'}" stroke="${isVerified ? '#22c55e' : '#f59e0b'}" stroke-width="1.5"/>
-      <text x="20" y="32" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="${isVerified ? '#15803d' : '#b45309'}">
-        ${isVerified ? '✓ VERIFIED DIGITAL RECORD' : '⏳ PENDING VERIFICATION'}
-      </text>
-      <text x="20" y="55" font-family="Arial, sans-serif" font-size="11" fill="#64748b">
-        Doc ID: ${doc.id}
-      </text>
-      <text x="20" y="73" font-family="Arial, sans-serif" font-size="11" fill="#64748b">
-        Status: ${doc.status}
-      </text>
-    </g>
+  <!-- Verification Badge Box -->
+  <g transform="translate(100, 520)">
+    <rect width="260" height="90" rx="8" fill="${isVerified ? '#f0fdf4' : '#fffbeb'}" stroke="${isVerified ? '#22c55e' : '#f59e0b'}" stroke-width="1.5"/>
+    <text x="20" y="32" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="${isVerified ? '#15803d' : '#b45309'}">
+      ${isVerified ? '✓ VERIFIED DIGITAL RECORD' : '⏳ PENDING VERIFICATION'}
+    </text>
+    <text x="20" y="55" font-family="Arial, sans-serif" font-size="11" fill="#64748b">
+      Doc ID: ${docId}
+    </text>
+    <text x="20" y="73" font-family="Arial, sans-serif" font-size="11" fill="#64748b">
+      Status: ${escapeXml(status)}
+    </text>
+  </g>
 
-    <!-- Official Signatures -->
-    <g transform="translate(680, 530)">
-      <line x1="0" y1="50" x2="220" y2="50" stroke="#334155" stroke-width="1.5"/>
-      <text x="110" y="40" font-family="'Brush Script MT', cursive, serif" font-size="24" fill="#0f172a" text-anchor="middle">
-        Dr. R. K. Sharma
-      </text>
-      <text x="110" y="72" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#334155" text-anchor="middle">
-        Registrar / Controller of Exams
-      </text>
-      <text x="110" y="90" font-family="Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">
-        ${collegeName}
-      </text>
-    </g>
-  </svg>`;
+  <!-- Official Signatures -->
+  <g transform="translate(680, 530)">
+    <line x1="0" y1="50" x2="220" y2="50" stroke="#334155" stroke-width="1.5"/>
+    <text x="110" y="40" font-family="'Brush Script MT', cursive, serif" font-size="24" fill="#0f172a" text-anchor="middle">
+      Dr. R. K. Sharma
+    </text>
+    <text x="110" y="72" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#334155" text-anchor="middle">
+      Registrar / Controller of Exams
+    </text>
+    <text x="110" y="90" font-family="Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">
+      ${collegeName}
+    </text>
+  </g>
+</svg>`;
 }

@@ -14,13 +14,16 @@ import {
   ChevronRight, 
   ArrowLeft,
   Search,
-  School
+  School,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 export const LoginPage = () => {
   const { login, demoUsers, switchDemoUser } = useAuth();
   const [email, setEmail] = useState('aarav.sharma@student.edu');
   const [password, setPassword] = useState('StudentPass@123');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeView, setActiveView] = useState('roles'); // 'roles' | 'students' | 'colleges'
@@ -420,13 +423,13 @@ export const LoginPage = () => {
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                Email Address
+                Gmail / Email Address or Student Roll No
               </label>
               <div style={{ position: 'relative' }}>
                 <input
-                  type="email"
+                  type="text"
                   required
-                  placeholder="name@student.edu / admin@apex.edu"
+                  placeholder="e.g. rahul@gmail.com or 22TK1A0501"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="input-field"
@@ -442,15 +445,22 @@ export const LoginPage = () => {
               </label>
               <div style={{ position: 'relative' }}>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
-                  placeholder="••••••••••••"
+                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="input-field"
-                  style={{ paddingLeft: 38 }}
+                  style={{ paddingLeft: 38, paddingRight: 38 }}
                 />
                 <Lock size={16} style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-muted)' }} />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ position: 'absolute', right: 12, top: 12, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 

@@ -13,7 +13,9 @@ import {
   Mail, 
   Phone,
   Users,
-  FileText
+  FileText,
+  MapPin,
+  Landmark
 } from 'lucide-react';
 
 export const AdminColleges = () => {
@@ -30,8 +32,9 @@ export const AdminColleges = () => {
     email: '',
     phone: '',
     website: '',
-    university: 'State University',
-    address: ''
+    university: 'Jawaharlal Nehru Technological University Hyderabad (JNTUH)',
+    address: 'Hyderabad, Telangana',
+    state: 'Telangana'
   });
   const [creating, setCreating] = useState(false);
   const [modalError, setModalError] = useState(null);
@@ -76,7 +79,7 @@ export const AdminColleges = () => {
   };
 
   const handleSuspendCollege = async (collegeId) => {
-    if (!confirm('Are you sure you want to suspend this college? Its administrators and students will be restricted.')) return;
+    if (!confirm('Are you sure you want to suspend this Telangana college? Its administrators and students will be restricted.')) return;
     setUpdatingId(collegeId);
     try {
       await api.updateCollegeVerification(collegeId, 'SUSPENDED');
@@ -93,7 +96,10 @@ export const AdminColleges = () => {
     setCreating(true);
     setModalError(null);
     try {
-      const data = await api.createCollege(newCollege);
+      const data = await api.createCollege({
+        ...newCollege,
+        state: 'Telangana'
+      });
       if (data.success) {
         setShowAddModal(false);
         setNewCollege({
@@ -102,8 +108,9 @@ export const AdminColleges = () => {
           email: '',
           phone: '',
           website: '',
-          university: 'State University',
-          address: ''
+          university: 'Jawaharlal Nehru Technological University Hyderabad (JNTUH)',
+          address: 'Hyderabad, Telangana',
+          state: 'Telangana'
         });
         fetchColleges();
       }
@@ -117,15 +124,44 @@ export const AdminColleges = () => {
   return (
     <div className="page-wrapper animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-        <div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff' }}>
-            Participating Colleges & Accreditation Authority
-          </h2>
-          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-            Only Super Administrators have authority to issue the official <strong>✓ Verified College</strong> accreditation badge
-          </p>
+      {/* Telangana State Jurisdiction Header */}
+      <div className="glass-panel" style={{
+        padding: '24px 28px',
+        background: 'linear-gradient(135deg, rgba(217, 119, 6, 0.15), rgba(15, 23, 42, 0.9))',
+        border: '1px solid rgba(245, 158, 11, 0.35)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 16
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{
+            width: 52,
+            height: 52,
+            borderRadius: 14,
+            background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff',
+            boxShadow: '0 0 20px rgba(245, 158, 11, 0.35)'
+          }}>
+            <Landmark size={28} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#ffffff' }}>
+                Telangana State Academic Institutions & Accreditation
+              </h2>
+              <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)', fontWeight: 800 }}>
+                📍 TELANGANA JURISDICTION ONLY
+              </span>
+            </div>
+            <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginTop: 4 }}>
+              Main Admin access is exclusively restricted to Telangana State engineering & university institutions.
+            </p>
+          </div>
         </div>
 
         <button
@@ -137,7 +173,7 @@ export const AdminColleges = () => {
           style={{ padding: '10px 18px', background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
         >
           <Plus size={16} />
-          <span>Add Academic Institution</span>
+          <span>Add Telangana College</span>
         </button>
       </div>
 
@@ -147,7 +183,7 @@ export const AdminColleges = () => {
           <div style={{ position: 'relative', width: '100%' }}>
             <input
               type="text"
-              placeholder="Search college by name, code, or university..."
+              placeholder="Search Telangana colleges by name, code (e.g., TKREC, CBIT), or university..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="input-field"
@@ -164,7 +200,7 @@ export const AdminColleges = () => {
           className="input-field"
           style={{ width: 'auto', paddingRight: 32 }}
         >
-          <option value="">All Accreditation Statuses</option>
+          <option value="">All Telangana Accreditation Statuses</option>
           <option value="VERIFIED">Verified Colleges Only</option>
           <option value="PENDING">Pending Accreditation</option>
           <option value="SUSPENDED">Suspended Institutions</option>
@@ -173,7 +209,7 @@ export const AdminColleges = () => {
 
       {/* Colleges List */}
       {loading ? (
-        <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading college directory...</div>
+        <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading Telangana college directory...</div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
           {colleges.map((c) => {
@@ -190,7 +226,7 @@ export const AdminColleges = () => {
                 border: isVerified ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid var(--border-glass)'
               }}>
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <div style={{
                         width: 44,
@@ -200,13 +236,19 @@ export const AdminColleges = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#ffffff'
+                        color: '#ffffff',
+                        fontWeight: 800
                       }}>
                         <Building2 size={24} />
                       </div>
                       <div>
-                        <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#60a5fa' }}>{c.college_code}</span>
-                        <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ffffff', lineHeight: 1.25 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#60a5fa' }}>{c.college_code}</span>
+                          <span className="badge" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                            Telangana
+                          </span>
+                        </div>
+                        <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#ffffff', lineHeight: 1.25, marginTop: 2 }}>
                           {c.name}
                         </h3>
                       </div>
@@ -218,7 +260,13 @@ export const AdminColleges = () => {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    <div>Affiliation: {c.university}</div>
+                    <div>Affiliation: <strong style={{ color: '#e2e8f0' }}>{c.university}</strong></div>
+                    {c.address && (
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                        <MapPin size={13} className="text-muted" style={{ marginTop: 2, flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.76rem' }}>{c.address}</span>
+                      </div>
+                    )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Mail size={13} className="text-muted" />
                       <span>{c.email}</span>
@@ -235,7 +283,7 @@ export const AdminColleges = () => {
                   <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-glass)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, textAlign: 'center', fontSize: '0.78rem' }}>
                     <div style={{ padding: '6px', background: 'rgba(255,255,255,0.03)', borderRadius: 6 }}>
                       <div style={{ fontWeight: 800, color: '#ffffff' }}>{c.studentCount ?? 0}</div>
-                      <div style={{ color: 'var(--text-muted)' }}>Students</div>
+                      <div style={{ color: 'var(--text-muted)' }}>Students Enrolled</div>
                     </div>
                     <div style={{ padding: '6px', background: 'rgba(255,255,255,0.03)', borderRadius: 6 }}>
                       <div style={{ fontWeight: 800, color: '#34d399' }}>{c.verifiedDocCount ?? 0}</div>
@@ -262,7 +310,7 @@ export const AdminColleges = () => {
                       disabled={updatingId === c.id}
                       className="btn-danger"
                       style={{ padding: '8px 12px', fontSize: '0.8rem' }}
-                      title="Suspend institution"
+                      title="Suspend Telangana institution"
                     >
                       <ShieldAlert size={14} />
                     </button>
@@ -289,9 +337,14 @@ export const AdminColleges = () => {
         }}>
           <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: 580, padding: '28px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffffff' }}>
-                Add New Academic Institution
-              </h3>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffffff' }}>
+                  Register Telangana Academic Institution
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: '#34d399', fontWeight: 700 }}>
+                  Jurisdiction: Telangana State Only
+                </span>
+              </div>
               <button onClick={() => setShowAddModal(false)} className="hover:text-white" style={{ color: 'var(--text-muted)' }}>
                 <X size={20} />
               </button>
@@ -306,12 +359,12 @@ export const AdminColleges = () => {
             <form onSubmit={handleCreateCollege} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
-                  College / Institution Name
+                  Institution Name
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. National Institute of Technology"
+                  placeholder="e.g. Teegala Krishna Reddy Engineering College (TKREC)"
                   value={newCollege.name}
                   onChange={(e) => setNewCollege({ ...newCollege, name: e.target.value })}
                   className="input-field"
@@ -326,7 +379,7 @@ export const AdminColleges = () => {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. NIT-TECH"
+                    placeholder="e.g. TKREC-HYD"
                     value={newCollege.college_code}
                     onChange={(e) => setNewCollege({ ...newCollege, college_code: e.target.value })}
                     className="input-field"
@@ -334,15 +387,14 @@ export const AdminColleges = () => {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
-                    Official Email
+                    State Jurisdiction
                   </label>
                   <input
-                    type="email"
-                    required
-                    placeholder="registrar@nit.edu"
-                    value={newCollege.email}
-                    onChange={(e) => setNewCollege({ ...newCollege, email: e.target.value })}
+                    type="text"
+                    disabled
+                    value="Telangana"
                     className="input-field"
+                    style={{ background: 'rgba(255,255,255,0.05)', color: '#34d399', fontWeight: 700 }}
                   />
                 </div>
               </div>
@@ -350,12 +402,14 @@ export const AdminColleges = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
-                    Affiliated University
+                    Official Email
                   </label>
                   <input
-                    type="text"
-                    value={newCollege.university}
-                    onChange={(e) => setNewCollege({ ...newCollege, university: e.target.value })}
+                    type="email"
+                    required
+                    placeholder="admin@tkrec.ac.in"
+                    value={newCollege.email}
+                    onChange={(e) => setNewCollege({ ...newCollege, email: e.target.value })}
                     className="input-field"
                   />
                 </div>
@@ -365,7 +419,7 @@ export const AdminColleges = () => {
                   </label>
                   <input
                     type="tel"
-                    placeholder="+91 98765 43210"
+                    placeholder="+91 40 2409 2555"
                     value={newCollege.phone}
                     onChange={(e) => setNewCollege({ ...newCollege, phone: e.target.value })}
                     className="input-field"
@@ -375,11 +429,24 @@ export const AdminColleges = () => {
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                  Affiliated University (Telangana)
+                </label>
+                <input
+                  type="text"
+                  value={newCollege.university}
+                  onChange={(e) => setNewCollege({ ...newCollege, university: e.target.value })}
+                  className="input-field"
+                  placeholder="JNTUH / Osmania University / Kakatiya University"
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
                   Official Website
                 </label>
                 <input
                   type="url"
-                  placeholder="https://nit.edu"
+                  placeholder="https://tkrec.ac.in"
                   value={newCollege.website}
                   onChange={(e) => setNewCollege({ ...newCollege, website: e.target.value })}
                   className="input-field"
@@ -388,11 +455,11 @@ export const AdminColleges = () => {
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
-                  Campus Address
+                  Campus Address (in Telangana)
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Campus location..."
+                  placeholder="e.g. Medbowli, Meerpet, Saroornagar, Hyderabad, Telangana 500097"
                   value={newCollege.address}
                   onChange={(e) => setNewCollege({ ...newCollege, address: e.target.value })}
                   className="input-field"
@@ -405,7 +472,7 @@ export const AdminColleges = () => {
                 </button>
                 <button type="submit" disabled={creating} className="btn-primary" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
                   <Plus size={16} />
-                  <span>{creating ? 'Adding...' : 'Register College'}</span>
+                  <span>{creating ? 'Adding...' : 'Register Telangana College'}</span>
                 </button>
               </div>
             </form>

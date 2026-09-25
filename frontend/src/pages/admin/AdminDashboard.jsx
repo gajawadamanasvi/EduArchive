@@ -47,7 +47,7 @@ export const AdminDashboard = () => {
       <div className="glass-panel" style={{
         padding: '28px 32px',
         background: 'linear-gradient(135deg, rgba(217, 119, 6, 0.2), rgba(15, 23, 42, 0.85))',
-        border: '1px solid rgba(245, 158, 11, 0.3)',
+        border: '1px solid rgba(245, 158, 11, 0.35)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -69,16 +69,16 @@ export const AdminDashboard = () => {
             <ShieldCheck size={32} />
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#ffffff' }}>
-                Super Administrator Master Console
+                Telangana State Super Administrator Master Console
               </h2>
               <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.4)', fontWeight: 800 }}>
-                FULL AUTHORITY
+                🏛️ TELANGANA JURISDICTION
               </span>
             </div>
             <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginTop: 4 }}>
-              System-wide institutional oversight, college accreditation authority, and cryptographic audit monitoring
+              Telangana State institutional oversight, college accreditation authority, and cryptographic audit monitoring
             </div>
           </div>
         </div>
@@ -86,7 +86,7 @@ export const AdminDashboard = () => {
         <div style={{ display: 'flex', gap: 10 }}>
           <Link to="/admin/colleges" className="btn-primary" style={{ padding: '10px 18px', background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
             <Building2 size={16} />
-            <span>Manage Colleges</span>
+            <span>Manage Telangana Colleges</span>
           </Link>
           <Link to="/admin/audit-logs" className="btn-secondary" style={{ padding: '10px 16px' }}>
             <History size={16} />
@@ -98,25 +98,25 @@ export const AdminDashboard = () => {
       {/* Global Statistics Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
         <DashboardCard
-          title="Colleges Enrolled"
+          title="Telangana Colleges"
           value={stats?.totalColleges ?? '...'}
           icon={Building2}
           color="amber"
           subtitle={`${stats?.verifiedColleges ?? 0} Verified Institutions`}
         />
         <DashboardCard
-          title="Total Students"
+          title="Telangana Students"
           value={stats?.totalStudents ?? '...'}
           icon={Users}
           color="blue"
           subtitle="Enrolled active students"
         />
         <DashboardCard
-          title="Certificates Archived"
+          title="Archived Certificates"
           value={stats?.totalDocuments ?? '...'}
           icon={FileText}
           color="cyan"
-          subtitle="Repository total"
+          subtitle="Telangana institutional repository"
         />
         <DashboardCard
           title="Verified Documents"

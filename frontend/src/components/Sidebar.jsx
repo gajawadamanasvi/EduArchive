@@ -41,10 +41,10 @@ export const Sidebar = ({ onOpenChat }) => {
   ];
 
   const adminLinks = [
-    { to: '/admin/dashboard', label: 'Global Dashboard', icon: LayoutDashboard },
-    { to: '/admin/colleges', label: 'Manage Colleges', icon: Building2 },
-    { to: '/college/students', label: 'All Students', icon: Users },
-    { to: '/college/documents', label: 'All Documents', icon: FileText },
+    { to: '/admin/dashboard', label: 'Telangana Dashboard', icon: LayoutDashboard },
+    { to: '/admin/colleges', label: 'Telangana Colleges', icon: Building2 },
+    { to: '/college/students', label: 'Telangana Students', icon: Users },
+    { to: '/college/documents', label: 'Telangana Documents', icon: FileText },
     { to: '/college/verification', label: 'Verification Monitor', icon: ShieldCheck },
     { to: '/admin/audit-logs', label: 'System Audit Logs', icon: History },
     { to: '/admin/settings', label: 'Platform Settings', icon: Settings }
@@ -71,7 +71,7 @@ export const Sidebar = ({ onOpenChat }) => {
       {/* Navigation Links */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 12px 6px' }}>
-          {isSuperAdmin ? 'Super Admin Portal' : (isCollegeAdmin ? 'Institution Portal' : 'Student Portal')}
+          {isSuperAdmin ? 'Telangana Admin Portal' : (isCollegeAdmin ? 'Institution Portal' : 'Student Portal')}
         </div>
 
         {links.map((item) => {

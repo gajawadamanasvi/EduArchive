@@ -186,9 +186,10 @@ class ApiService {
 
   // Document Request APIs
   createDocumentRequest(data) {
+    const isFormData = data instanceof FormData;
     return this.request('/requests', {
       method: 'POST',
-      body: JSON.stringify(data)
+      body: isFormData ? data : JSON.stringify(data)
     });
   }
 

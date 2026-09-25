@@ -1,10 +1,16 @@
 import db from '../config/db.js';
 import { logAudit } from '../services/auditService.js';
+import { isTelanganaCollege } from '../utils/jurisdiction.js';
 
 export const getAllColleges = async (req, res) => {
   try {
-    const { status, search } = req.query;
+    const { status, search, state } = req.query;
     let colleges = db.find('colleges');
+
+    // Main Admin (SUPER_ADMIN) has access restricted only to Telangana colleges
+    if (req.user?.role === 'SUPER_ADMIN' || state?.toLowerCase() === 'telangana') {
+      colleges = colleges.filter(isTelanganaCollege);
+    }
 
     if (status) {
       colleges = colleges.filter(c => c.verification_status === status.toUpperCase());
@@ -15,7 +21,8 @@ export const getAllColleges = async (req, res) => {
       colleges = colleges.filter(c => 
         (c.name && c.name.toLowerCase().includes(q)) ||
         (c.college_code && c.college_code.toLowerCase().includes(q)) ||
-        (c.university && c.university.toLowerCase().includes(q))
+        (c.university && c.university.toLowerCase().includes(q)) ||
+        (c.address && c.address.toLowerCase().includes(q))
       );
     }
 
@@ -26,13 +33,19 @@ export const getAllColleges = async (req, res) => {
       const verifiedDocCount = db.count('documents', d => String(d.college_id) === String(college.id) && d.status === 'VERIFIED');
       return {
         ...college,
+        state: college.state || 'Telangana',
         studentCount,
         docCount,
         verifiedDocCount
       };
     });
 
-    return res.json({ success: true, count: enriched.length, colleges: enriched });
+    return res.json({ 
+      success: true, 
+      count: enriched.length, 
+      jurisdiction: req.user?.role === 'SUPER_ADMIN' ? 'TELANGANA_STATE' : undefined,
+      colleges: enriched 
+    });
   } catch (error) {
     console.error('[GetAllColleges Error]:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch colleges.' });
@@ -46,6 +59,14 @@ export const getCollegeById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'College not found.' });
     }
 
+    // Main Admin is restricted to Telangana colleges only
+    if (req.user?.role === 'SUPER_ADMIN' && !isTelanganaCollege(college)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access Denied: Main Administrator authority is restricted to Telangana colleges only.'
+      });
+    }
+
     const studentCount = db.count('students', s => String(s.college_id) === String(college.id));
     const docCount = db.count('documents', d => String(d.college_id) === String(college.id));
     const verifiedDocCount = db.count('documents', d => String(d.college_id) === String(college.id) && d.status === 'VERIFIED');
@@ -55,6 +76,7 @@ export const getCollegeById = async (req, res) => {
       success: true,
       college: {
         ...college,
+        state: college.state || 'Telangana',
         stats: {
           totalStudents: studentCount,
           totalDocuments: docCount,
@@ -71,7 +93,7 @@ export const getCollegeById = async (req, res) => {
 
 export const createCollege = async (req, res) => {
   try {
-    const { name, college_code, address, email, phone, website, university } = req.body;
+    const { name, college_code, address, email, phone, website, university, state } = req.body;
 
     if (!name || !college_code || !email) {
       return res.status(400).json({ success: false, message: 'College name, code, and official email are required.' });
@@ -86,10 +108,11 @@ export const createCollege = async (req, res) => {
       name,
       college_code: college_code.toUpperCase(),
       address: address || '',
+      state: state || 'Telangana',
       email: email.toLowerCase(),
       phone: phone || '',
       website: website || '',
-      university: university || 'State University',
+      university: university || 'Jawaharlal Nehru Technological University Hyderabad (JNTUH)',
       verification_status: 'PENDING', // default pending until Super Admin verifies
       verified_at: null,
       verified_by: null,
@@ -101,11 +124,11 @@ export const createCollege = async (req, res) => {
       action: 'COLLEGE_CREATED',
       entityType: 'COLLEGE',
       entityId: newCollege.id,
-      details: { name, code: college_code },
+      details: { name, code: college_code, state: newCollege.state },
       ipAddress: req.ip
     });
 
-    return res.status(201).json({ success: true, message: 'College created successfully.', college: newCollege });
+    return res.status(201).json({ success: true, message: 'College created successfully in Telangana jurisdiction.', college: newCollege });
   } catch (error) {
     console.error('[CreateCollege Error]:', error);
     return res.status(500).json({ success: false, message: 'Failed to create college.' });
@@ -124,6 +147,14 @@ export const updateCollegeVerificationStatus = async (req, res) => {
     const college = db.findById('colleges', id);
     if (!college) {
       return res.status(404).json({ success: false, message: 'College record not found.' });
+    }
+
+    // Main Admin is restricted to Telangana colleges only
+    if (req.user?.role === 'SUPER_ADMIN' && !isTelanganaCollege(college)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access Denied: Main Administrator authority is restricted to Telangana colleges only.'
+      });
     }
 
     const updates = {
@@ -166,10 +197,15 @@ export const updateCollegeProfile = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Forbidden: Cannot edit another college profile.' });
     }
 
-    const { name, address, phone, website, university, logo_url } = req.body;
+    if (req.user.role === 'SUPER_ADMIN' && !isTelanganaCollege(college)) {
+      return res.status(403).json({ success: false, message: 'Access Denied: Main Administrator can only edit Telangana colleges.' });
+    }
+
+    const { name, address, phone, website, university, logo_url, state } = req.body;
     const updates = {
       name: name || college.name,
       address: address !== undefined ? address : college.address,
+      state: state !== undefined ? state : (college.state || 'Telangana'),
       phone: phone !== undefined ? phone : college.phone,
       website: website !== undefined ? website : college.website,
       university: university !== undefined ? university : college.university,

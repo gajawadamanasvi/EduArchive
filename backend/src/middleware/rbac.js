@@ -1,4 +1,5 @@
 import db from '../config/db.js';
+import { isTelanganaCollege } from '../utils/jurisdiction.js';
 
 export const requireRoles = (...allowedRoles) => {
   return (req, res, next) => {
@@ -32,8 +33,15 @@ export const requireDocumentAccess = (req, res, next) => {
       });
     }
 
-    // SUPER_ADMIN has platform-wide access
+    // SUPER_ADMIN has access scoped to Telangana colleges
     if (req.user.role === 'SUPER_ADMIN') {
+      const docCollege = db.findById('colleges', document.college_id);
+      if (docCollege && !isTelanganaCollege(docCollege)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access Denied: Main Administrator has access to Telangana colleges only.'
+        });
+      }
       req.targetDocument = document;
       return next();
     }
@@ -85,6 +93,13 @@ export const requireStudentAccess = (req, res, next) => {
     }
 
     if (req.user.role === 'SUPER_ADMIN') {
+      const studentCollege = db.findById('colleges', student.college_id);
+      if (studentCollege && !isTelanganaCollege(studentCollege)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access Denied: Main Administrator has access to Telangana colleges only.'
+        });
+      }
       req.targetStudent = student;
       return next();
     }

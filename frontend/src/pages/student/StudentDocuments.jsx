@@ -4,6 +4,7 @@ import { DocumentCard } from '../../components/DocumentCard.jsx';
 import { DocumentTable } from '../../components/DocumentTable.jsx';
 import { DocumentRequestModal } from '../../components/DocumentRequestModal.jsx';
 import { AIVerificationModal } from '../../components/AIVerificationModal.jsx';
+import { CertificateViewerModal } from '../../components/CertificateViewerModal.jsx';
 import { 
   FileText, 
   Search, 
@@ -24,6 +25,7 @@ export const StudentDocuments = () => {
   const [typeFilter, setTypeFilter] = useState('');
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [selectedInspectDoc, setSelectedInspectDoc] = useState(null);
+  const [selectedViewDoc, setSelectedViewDoc] = useState(null);
 
   const fetchDocs = async () => {
     try {
@@ -69,7 +71,7 @@ export const StudentDocuments = () => {
   };
 
   const handleView = (doc) => {
-    window.open(`/api/documents/${doc.id}/view`, '_blank');
+    setSelectedViewDoc(doc);
   };
 
   return (
@@ -239,6 +241,13 @@ export const StudentDocuments = () => {
           onClose={() => setSelectedInspectDoc(null)}
           onStatusUpdated={fetchDocs}
           isCollegeAdmin={false}
+        />
+      )}
+
+      {selectedViewDoc && (
+        <CertificateViewerModal
+          document={selectedViewDoc}
+          onClose={() => setSelectedViewDoc(null)}
         />
       )}
 

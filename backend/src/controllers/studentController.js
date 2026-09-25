@@ -1,6 +1,7 @@
 import db from '../config/db.js';
 import { logAudit } from '../services/auditService.js';
 import { hashPassword } from '../utils/security.js';
+import { isTelanganaCollege, getTelanganaCollegeIds } from '../utils/jurisdiction.js';
 
 export const getStudentProfile = async (req, res) => {
   try {
@@ -19,6 +20,13 @@ export const getStudentProfile = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Student record not found.' });
     }
 
+    if (req.user.role === 'SUPER_ADMIN') {
+      const studentCollege = db.findById('colleges', student.college_id);
+      if (studentCollege && !isTelanganaCollege(studentCollege)) {
+        return res.status(403).json({ success: false, message: 'Access Denied: Main Administrator authority is restricted to Telangana colleges only.' });
+      }
+    }
+
     return res.json({ success: true, student });
   } catch (error) {
     console.error('[GetStudentProfile Error]:', error);
@@ -34,7 +42,20 @@ export const updateStudentProfile = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Student record not found.' });
     }
 
-    const { phone, profile_photo, name, course, department, academic_year, roll_number, student_id_number } = req.body;
+    const { 
+      phone, 
+      profile_photo, 
+      name, 
+      email, 
+      gmail, 
+      password, 
+      course, 
+      department, 
+      academic_year, 
+      roll_number, 
+      student_id_number,
+      registration_no 
+    } = req.body;
 
     // Student role restriction: Only safe fields can be updated
     if (req.user.role === 'STUDENT') {
@@ -43,7 +64,7 @@ export const updateStudentProfile = async (req, res) => {
       }
 
       const safeUpdates = {};
-      if (phone !== undefined) safeUpdates.phone = phone;
+      if (phone !== undefined) safeUpdates.phone = String(phone).trim();
       if (profile_photo !== undefined) safeUpdates.profile_photo = profile_photo;
 
       db.update('students', student.id, safeUpdates);
@@ -66,19 +87,45 @@ export const updateStudentProfile = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Forbidden: Cannot edit student of another college.' });
     }
 
+    if (req.user.role === 'SUPER_ADMIN') {
+      const studentCollege = db.findById('colleges', student.college_id);
+      if (studentCollege && !isTelanganaCollege(studentCollege)) {
+        return res.status(403).json({ success: false, message: 'Access Denied: Main Administrator authority is restricted to Telangana colleges only.' });
+      }
+    }
+
+    const finalRegNo = student_id_number !== undefined ? student_id_number : (registration_no !== undefined ? registration_no : student.student_id_number);
     const adminUpdates = {
-      phone: phone !== undefined ? phone : student.phone,
-      course: course !== undefined ? course : student.course,
-      department: department !== undefined ? department : student.department,
-      academic_year: academic_year !== undefined ? academic_year : student.academic_year,
-      roll_number: roll_number !== undefined ? roll_number : student.roll_number,
-      student_id_number: student_id_number !== undefined ? student_id_number : student.student_id_number
+      phone: phone !== undefined ? String(phone).trim() : student.phone,
+      course: course !== undefined ? String(course).trim() : student.course,
+      department: department !== undefined ? String(department).trim() : student.department,
+      academic_year: academic_year !== undefined ? String(academic_year).trim() : student.academic_year,
+      roll_number: roll_number !== undefined ? String(roll_number).trim() : student.roll_number,
+      student_id_number: finalRegNo ? String(finalRegNo).trim() : student.student_id_number
     };
 
     db.update('students', student.id, adminUpdates);
 
-    if (name) {
-      db.update('users', student.user_id, { name });
+    // Update user record (name, email, password)
+    const userUpdates = {};
+    if (name) userUpdates.name = String(name).trim();
+    
+    const newEmail = email || gmail;
+    if (newEmail) {
+      const normalizedEmail = String(newEmail).trim().toLowerCase();
+      const duplicate = db.findOne('users', u => u.email.toLowerCase() === normalizedEmail && String(u.id) !== String(student.user_id));
+      if (duplicate) {
+        return res.status(400).json({ success: false, message: 'Another account already uses this email/gmail.' });
+      }
+      userUpdates.email = normalizedEmail;
+    }
+
+    if (password && String(password).trim().length > 0) {
+      userUpdates.password_hash = await hashPassword(String(password).trim());
+    }
+
+    if (Object.keys(userUpdates).length > 0) {
+      db.update('users', student.user_id, userUpdates);
     }
 
     await logAudit({
@@ -86,12 +133,12 @@ export const updateStudentProfile = async (req, res) => {
       action: 'ADMIN_STUDENT_UPDATED',
       entityType: 'STUDENT',
       entityId: student.id,
-      details: adminUpdates,
+      details: { ...adminUpdates, updated_credentials: Boolean(password || newEmail) },
       ipAddress: req.ip
     });
 
     const updated = db.getStudentWithDetails(student.id);
-    return res.json({ success: true, message: 'Student profile updated by administrator.', student: updated });
+    return res.json({ success: true, message: 'Student profile & credentials updated by administrator.', student: updated });
   } catch (error) {
     console.error('[UpdateStudentProfile Error]:', error);
     return res.status(500).json({ success: false, message: 'Failed to update student profile.' });
@@ -110,7 +157,8 @@ export const getCollegeStudents = async (req, res) => {
     if (collegeId) {
       students = db.find('students', s => String(s.college_id) === String(collegeId));
     } else if (req.user.role === 'SUPER_ADMIN') {
-      students = db.find('students');
+      const telanganaCollegeIds = getTelanganaCollegeIds();
+      students = db.find('students', s => telanganaCollegeIds.has(String(s.college_id)));
     } else {
       return res.status(403).json({ success: false, message: 'Unauthorized college scope.' });
     }
@@ -125,15 +173,43 @@ export const getCollegeStudents = async (req, res) => {
 
 export const createStudent = async (req, res) => {
   try {
-    const { name, email, password = 'StudentPass@123', roll_number, student_id_number, course, department, academic_year, phone } = req.body;
+    const { 
+      name, 
+      email, 
+      gmail, 
+      password, 
+      roll_number, 
+      student_id_number, 
+      registration_no, 
+      course, 
+      department, 
+      academic_year, 
+      phone 
+    } = req.body;
 
-    if (!name || !email || !roll_number) {
-      return res.status(400).json({ success: false, message: 'Name, email, and roll number are mandatory.' });
+    const studentName = (name || '').trim();
+    const studentEmail = (email || gmail || '').trim().toLowerCase();
+    const studentRollNo = (roll_number || '').trim();
+    const studentRegNo = (student_id_number || registration_no || '').trim() || `REG-${Date.now().toString().slice(-6)}`;
+    const studentPassword = (password || '').trim() || 'StudentPass@123';
+    const studentPhone = (phone || '').trim();
+    const studentCourse = (course || 'Bachelor of Technology in Computer Science').trim();
+    const studentDept = (department || 'Computer Science & Engineering').trim();
+    const studentYear = (academic_year || '2022-2026').trim();
+
+    if (!studentName || !studentEmail || !studentRollNo) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Student Name, Gmail/Email, and Student Roll Number are required.' 
+      });
     }
 
-    const existingUser = db.findOne('users', u => u.email.toLowerCase() === email.toLowerCase());
+    const existingUser = db.findOne('users', u => u.email.toLowerCase() === studentEmail);
     if (existingUser) {
-      return res.status(400).json({ success: false, message: 'A user with this email address already exists.' });
+      return res.status(400).json({ 
+        success: false, 
+        message: `An account with email/gmail '${studentEmail}' already exists. Please use a unique email or edit the existing student.` 
+      });
     }
 
     const collegeId = req.user.role === 'COLLEGE_ADMIN' ? req.user.college_id : req.body.college_id;
@@ -141,26 +217,33 @@ export const createStudent = async (req, res) => {
       return res.status(400).json({ success: false, message: 'College assignment is required.' });
     }
 
-    const password_hash = await hashPassword(password);
+    if (req.user.role === 'SUPER_ADMIN') {
+      const targetCollege = db.findById('colleges', collegeId);
+      if (targetCollege && !isTelanganaCollege(targetCollege)) {
+        return res.status(403).json({ success: false, message: 'Access Denied: Main Administrator can only register students in Telangana colleges.' });
+      }
+    }
+
+    const password_hash = await hashPassword(studentPassword);
     const newUser = db.insert('users', {
-      name,
-      email: email.toLowerCase(),
+      name: studentName,
+      email: studentEmail,
       password_hash,
       role: 'STUDENT',
       status: 'ACTIVE',
       college_id: collegeId,
-      avatar_url: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`
+      avatar_url: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(studentName)}`
     });
 
     const newStudent = db.insert('students', {
       user_id: newUser.id,
       college_id: collegeId,
-      student_id_number: student_id_number || `STU-${Date.now().toString().slice(-6)}`,
-      roll_number,
-      course: course || 'Bachelor of Technology',
-      department: department || 'Computer Science',
-      academic_year: academic_year || '2022-2026',
-      phone: phone || ''
+      student_id_number: studentRegNo,
+      roll_number: studentRollNo,
+      course: studentCourse,
+      department: studentDept,
+      academic_year: studentYear,
+      phone: studentPhone
     });
 
     await logAudit({
@@ -168,14 +251,30 @@ export const createStudent = async (req, res) => {
       action: 'STUDENT_CREATED',
       entityType: 'STUDENT',
       entityId: newStudent.id,
-      details: { name, email, roll_number, collegeId },
+      details: { 
+        name: studentName, 
+        email: studentEmail, 
+        roll_number: studentRollNo, 
+        student_id_number: studentRegNo,
+        collegeId 
+      },
       ipAddress: req.ip
     });
 
     const fullStudent = db.getStudentWithDetails(newStudent.id);
-    return res.status(201).json({ success: true, message: 'Student registered successfully.', student: fullStudent });
+    return res.status(201).json({ 
+      success: true, 
+      message: `Student '${studentName}' enrolled successfully with credentials established.`, 
+      student: fullStudent,
+      credentials: {
+        email: studentEmail,
+        roll_number: studentRollNo,
+        registration_no: studentRegNo,
+        password: studentPassword
+      }
+    });
   } catch (error) {
     console.error('[CreateStudent Error]:', error);
-    return res.status(500).json({ success: false, message: 'Failed to create student record.' });
+    return res.status(500).json({ success: false, message: 'Failed to create student record: ' + error.message });
   }
 };
