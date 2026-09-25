@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useTheme } from '../context/ThemeContext.jsx';
 import { VerificationBadge } from './VerificationBadge.jsx';
 import { 
   Shield, 
@@ -12,12 +13,17 @@ import {
   Sparkles, 
   BookOpen, 
   UserCheck,
-  Bell
+  Bell,
+  Sun,
+  Moon,
+  Palette
 } from 'lucide-react';
 
 export const Navbar = () => {
   const { user, logout, switchDemoUser, demoUsers, isStudent, isCollegeAdmin, isSuperAdmin } = useAuth();
+  const { theme, toggleTheme, isDark, palette, setPalette, palettes, activePalette } = useTheme();
   const [showDemoMenu, setShowDemoMenu] = useState(false);
+  const [showPaletteMenu, setShowPaletteMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const navigate = useNavigate();
 
@@ -146,6 +152,89 @@ export const Navbar = () => {
               </div>
             )}
           </div>
+
+          {/* Theme & Palette Switcher */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowPaletteMenu(!showPaletteMenu)}
+              className="btn-secondary"
+              style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: 8, gap: 5 }}
+              title="Change Color Palette & Theme"
+            >
+              <Palette size={14} style={{ color: 'var(--primary)' }} />
+              <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{activePalette?.name}</span>
+              <ChevronDown size={11} />
+            </button>
+
+            {showPaletteMenu && (
+              <div className="glass-panel animate-fade-in" style={{
+                position: 'absolute',
+                top: '120%',
+                right: 0,
+                width: 260,
+                padding: '10px',
+                zIndex: 100,
+                boxShadow: 'var(--shadow-lg)',
+                border: '1px solid var(--border-glass)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6
+              }}>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', padding: '2px 6px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
+                  Curated Color Palettes
+                </div>
+
+                {palettes.map((p) => {
+                  const isSelected = palette === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        setPalette(p.id);
+                        setShowPaletteMenu(false);
+                      }}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '8px 10px',
+                        borderRadius: 8,
+                        background: isSelected ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                        border: isSelected ? `1.5px solid ${p.primary}` : '1.5px solid transparent',
+                        color: 'var(--text-primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer'
+                      }}
+                      className="glow-card"
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <span style={{ width: 10, height: 10, borderRadius: '50%', background: p.primary }} />
+                          <span style={{ width: 7, height: 7, borderRadius: '50%', background: p.secondary }} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>{p.name}</div>
+                          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{p.tag}</div>
+                        </div>
+                      </div>
+                      {p.mode === 'dark' ? <Moon size={12} className="text-blue-400" /> : <Sun size={12} className="text-amber-400" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Light/Dark Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="btn-secondary"
+            style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: 8 }}
+            title={`Toggle to ${isDark ? 'Light' : 'Dark'} Mode`}
+          >
+            {isDark ? <Sun size={15} className="text-amber-400" /> : <Moon size={15} className="text-blue-500" />}
+          </button>
 
           {/* Docs link */}
           <Link

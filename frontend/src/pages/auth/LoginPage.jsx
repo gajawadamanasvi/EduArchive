@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useTheme } from '../../context/ThemeContext.jsx';
 import { 
   Shield, 
   LogIn, 
@@ -16,11 +17,16 @@ import {
   Search,
   School,
   Eye,
-  EyeOff
+  EyeOff,
+  Sun,
+  Moon,
+  Sparkles,
+  Palette
 } from 'lucide-react';
 
 export const LoginPage = () => {
   const { login, demoUsers, switchDemoUser } = useAuth();
+  const { theme, setTheme, palette, setPalette, palettes, activePalette, isDark, isLight } = useTheme();
   const [email, setEmail] = useState('aarav.sharma@student.edu');
   const [password, setPassword] = useState('StudentPass@123');
   const [showPassword, setShowPassword] = useState(false);
@@ -75,12 +81,100 @@ export const LoginPage = () => {
     <div style={{
       minHeight: '100vh',
       display: 'flex',
+      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '32px 16px',
+      padding: '24px 16px',
       position: 'relative',
       zIndex: 1
     }}>
+      
+      {/* Top Header Theme & Color Palette Selector Bar */}
+      <div style={{
+        width: '100%',
+        maxWidth: 1060,
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        marginBottom: 16,
+        padding: '0 4px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Shield size={20} className="text-blue-500" />
+          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+            EduArchive
+          </span>
+          <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: 6, background: 'rgba(59, 130, 246, 0.15)', color: 'var(--primary)', fontWeight: 700 }}>
+            {activePalette?.name}
+          </span>
+        </div>
+
+        {/* Color Palette Selector Chips */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 6,
+          background: isDark ? 'rgba(15, 23, 42, 0.85)' : 'rgba(255, 255, 255, 0.95)',
+          padding: '5px 8px',
+          borderRadius: 14,
+          border: isDark ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid rgba(203, 213, 225, 0.8)',
+          boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 16px rgba(15, 23, 42, 0.06)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, paddingRight: 4, fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <Palette size={13} />
+            <span>Theme:</span>
+          </div>
+
+          {palettes.map((p) => {
+            const isSelected = palette === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setPalette(p.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '5px 10px',
+                  borderRadius: 8,
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  background: isSelected 
+                    ? (isDark ? 'rgba(255, 255, 255, 0.1)' : '#ffffff') 
+                    : 'transparent',
+                  color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  border: isSelected 
+                    ? `1.5px solid ${p.primary}` 
+                    : '1.5px solid transparent',
+                  boxShadow: isSelected 
+                    ? `0 0 12px ${p.primary}40` 
+                    : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                title={`${p.name} (${p.mode === 'dark' ? 'Dark' : 'Light'} Mode)`}
+              >
+                {/* 3-Color Swatch Dots */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: p.primary }} />
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: p.secondary }} />
+                </div>
+                <span>{p.name}</span>
+                {p.mode === 'dark' ? (
+                  <Moon size={11} style={{ opacity: 0.6 }} />
+                ) : (
+                  <Sun size={11} style={{ opacity: 0.8, color: '#eab308' }} />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="glass-panel animate-fade-in" style={{
         width: '100%',
         maxWidth: 1060,
@@ -88,14 +182,16 @@ export const LoginPage = () => {
         gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
         borderRadius: 24,
         overflow: 'hidden',
-        boxShadow: '0 25px 60px rgba(0,0,0,0.85)',
-        border: '1px solid rgba(59, 130, 246, 0.3)'
+        boxShadow: isDark ? '0 25px 60px rgba(0,0,0,0.85)' : '0 20px 50px rgba(15, 23, 42, 0.12)',
+        border: isDark ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid rgba(203, 213, 225, 0.8)'
       }}>
         
         {/* Left Side: System Information & Institutional Roles */}
         <div style={{
           padding: '36px',
-          background: 'linear-gradient(135deg, rgba(30, 58, 138, 0.4), rgba(15, 23, 42, 0.85))',
+          background: isDark 
+            ? 'linear-gradient(135deg, rgba(30, 58, 138, 0.4), rgba(15, 23, 42, 0.85))'
+            : 'linear-gradient(135deg, rgba(239, 246, 255, 0.9), rgba(248, 250, 252, 0.95))',
           borderRight: '1px solid var(--border-glass)',
           display: 'flex',
           flexDirection: 'column',
@@ -117,10 +213,10 @@ export const LoginPage = () => {
                 <Shield size={26} color="#ffffff" />
               </div>
               <div>
-                <h1 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
+                <h1 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
                   EduArchive
                 </h1>
-                <div style={{ fontSize: '0.78rem', color: '#93c5fd', lineHeight: 1.35, marginTop: 2 }}>
+                <div style={{ fontSize: '0.78rem', color: isDark ? '#93c5fd' : '#2563eb', fontWeight: 600, lineHeight: 1.35, marginTop: 2 }}>
                   Institutional Digital Certification Management and Verification System
                 </div>
               </div>
@@ -131,7 +227,13 @@ export const LoginPage = () => {
             </p>
 
             {/* Role & Student Selection Container */}
-            <div style={{ background: 'rgba(15, 23, 42, 0.75)', padding: '16px', borderRadius: 14, border: '1px solid rgba(59, 130, 246, 0.25)' }}>
+            <div style={{ 
+              background: isDark ? 'rgba(15, 23, 42, 0.75)' : 'rgba(255, 255, 255, 0.9)', 
+              padding: '16px', 
+              borderRadius: 14, 
+              border: isDark ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid rgba(203, 213, 225, 0.8)',
+              boxShadow: isDark ? 'none' : '0 4px 12px rgba(0,0,0,0.03)'
+            }}>
               
               {/* Top-Level Role Menu */}
               {activeView === 'roles' && (
@@ -153,11 +255,12 @@ export const LoginPage = () => {
                           justifyContent: 'space-between',
                           padding: '10px 14px',
                           borderRadius: 10,
-                          background: 'rgba(255, 255, 255, 0.04)',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          background: isDark ? 'rgba(255, 255, 255, 0.04)' : '#ffffff',
+                          border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #cbd5e1',
                           textAlign: 'left',
-                          color: '#f1f5f9',
-                          cursor: 'pointer'
+                          color: 'var(--text-primary)',
+                          cursor: 'pointer',
+                          boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)'
                         }}
                         className="glow-card"
                       >
@@ -166,7 +269,7 @@ export const LoginPage = () => {
                             <Shield size={18} />
                           </div>
                           <div>
-                            <div style={{ fontSize: '0.84rem', fontWeight: 700 }}>Super Admin</div>
+                            <div style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-primary)' }}>Super Admin</div>
                             <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{superAdmin.name}</div>
                           </div>
                         </div>
@@ -184,11 +287,12 @@ export const LoginPage = () => {
                         justifyContent: 'space-between',
                         padding: '10px 14px',
                         borderRadius: 10,
-                        background: 'rgba(255, 255, 255, 0.04)',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        background: isDark ? 'rgba(255, 255, 255, 0.04)' : '#ffffff',
+                        border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #cbd5e1',
                         textAlign: 'left',
-                        color: '#f1f5f9',
-                        cursor: 'pointer'
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer',
+                        boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)'
                       }}
                       className="glow-card"
                     >
@@ -197,7 +301,7 @@ export const LoginPage = () => {
                           <Building2 size={18} />
                         </div>
                         <div>
-                          <div style={{ fontSize: '0.84rem', fontWeight: 700 }}>College Administrators</div>
+                          <div style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-primary)' }}>College Administrators</div>
                           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                             TKREC • CBIT • Apex Tech • Global Univ ({collegeAdmins.length} Institutions)
                           </div>
@@ -216,26 +320,27 @@ export const LoginPage = () => {
                         justifyContent: 'space-between',
                         padding: '10px 14px',
                         borderRadius: 10,
-                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(59, 130, 246, 0.12))',
-                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                        background: isDark ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(59, 130, 246, 0.12))' : 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(59, 130, 246, 0.08))',
+                        border: isDark ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(16, 185, 129, 0.4)',
                         textAlign: 'left',
-                        color: '#f1f5f9',
-                        cursor: 'pointer'
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer',
+                        boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)'
                       }}
                       className="glow-card"
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 34, height: 34, borderRadius: 8, background: 'rgba(16, 185, 129, 0.25)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 8, background: 'rgba(16, 185, 129, 0.25)', color: isDark ? '#34d399' : '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <GraduationCap size={20} />
                         </div>
                         <div>
-                          <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#34d399' }}>Students</div>
-                          <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                          <div style={{ fontSize: '0.86rem', fontWeight: 700, color: isDark ? '#34d399' : '#059669' }}>Students</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                             View & select students across {Object.keys(studentsByCollege).length} colleges ({studentUsers.length} students)
                           </div>
                         </div>
                       </div>
-                      <ChevronRight size={16} className="text-emerald-400" />
+                      <ChevronRight size={16} className="text-emerald-500" />
                     </button>
                   </div>
                 </div>
@@ -254,7 +359,7 @@ export const LoginPage = () => {
                         gap: 6,
                         background: 'transparent',
                         border: 'none',
-                        color: '#60a5fa',
+                        color: isDark ? '#60a5fa' : '#2563eb',
                         fontSize: '0.78rem',
                         fontWeight: 600,
                         cursor: 'pointer',
@@ -279,17 +384,18 @@ export const LoginPage = () => {
                           justifyContent: 'space-between',
                           padding: '10px 12px',
                           borderRadius: 8,
-                          background: 'rgba(255, 255, 255, 0.04)',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          background: isDark ? 'rgba(255, 255, 255, 0.04)' : '#ffffff',
+                          border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #cbd5e1',
                           textAlign: 'left',
-                          color: '#f1f5f9',
-                          cursor: 'pointer'
+                          color: 'var(--text-primary)',
+                          cursor: 'pointer',
+                          boxShadow: isDark ? 'none' : '0 1px 3px rgba(0,0,0,0.05)'
                         }}
                         className="glow-card"
                       >
                         <div>
-                          <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f8fafc' }}>{admin.collegeName}</div>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{admin.name} • <span style={{ color: '#60a5fa' }}>{admin.email}</span></div>
+                          <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>{admin.collegeName}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{admin.name} • <span style={{ color: isDark ? '#60a5fa' : '#2563eb' }}>{admin.email}</span></div>
                         </div>
                         <ArrowRight size={14} className="text-blue-400" />
                       </button>
@@ -311,7 +417,7 @@ export const LoginPage = () => {
                         gap: 6,
                         background: 'transparent',
                         border: 'none',
-                        color: '#34d399',
+                        color: isDark ? '#34d399' : '#059669',
                         fontSize: '0.78rem',
                         fontWeight: 600,
                         cursor: 'pointer',
@@ -321,7 +427,7 @@ export const LoginPage = () => {
                       <ArrowLeft size={14} />
                       <span>Back to Roles</span>
                     </button>
-                    <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>Select Student</span>
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Select Student</span>
                   </div>
 
                   {/* Search filter for students */}
@@ -350,7 +456,7 @@ export const LoginPage = () => {
 
                       return (
                         <div key={collegeName} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.74rem', fontWeight: 700, color: '#93c5fd', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 3 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.74rem', fontWeight: 700, color: isDark ? '#93c5fd' : '#2563eb', borderBottom: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.08)', paddingBottom: 3 }}>
                             <School size={12} />
                             <span>{collegeName}</span>
                           </div>
@@ -367,23 +473,24 @@ export const LoginPage = () => {
                                   justifyContent: 'space-between',
                                   padding: '8px 10px',
                                   borderRadius: 8,
-                                  background: 'rgba(255, 255, 255, 0.03)',
-                                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                                  background: isDark ? 'rgba(255, 255, 255, 0.03)' : '#ffffff',
+                                  border: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid #cbd5e1',
                                   textAlign: 'left',
-                                  color: '#f1f5f9',
-                                  cursor: 'pointer'
+                                  color: 'var(--text-primary)',
+                                  cursor: 'pointer',
+                                  boxShadow: isDark ? 'none' : '0 1px 2px rgba(0,0,0,0.04)'
                                 }}
                                 className="glow-card"
                               >
                                 <div>
-                                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#f8fafc' }}>
-                                    {s.name} <span style={{ fontSize: '0.7rem', color: '#38bdf8', fontWeight: 400 }}>({s.rollNumber})</span>
+                                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                    {s.name} <span style={{ fontSize: '0.7rem', color: isDark ? '#38bdf8' : '#0284c7', fontWeight: 500 }}>({s.rollNumber})</span>
                                   </div>
                                   <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
                                     {s.course}
                                   </div>
                                 </div>
-                                <ArrowRight size={13} className="text-emerald-400" />
+                                <ArrowRight size={13} className="text-emerald-500" />
                               </button>
                             ))}
                           </div>
@@ -398,15 +505,21 @@ export const LoginPage = () => {
           </div>
 
           <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <CheckCircle2 size={14} className="text-emerald-400" />
+            <CheckCircle2 size={14} className="text-emerald-500" />
             <span>Encrypted JWT Sessions • Relational Storage • AI Verification</span>
           </div>
         </div>
 
         {/* Right Side: Login Form */}
-        <div style={{ padding: '36px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <div style={{ 
+          padding: '36px', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          justifyContent: 'center',
+          background: isDark ? 'transparent' : 'rgba(255, 255, 255, 0.6)'
+        }}>
           <div style={{ marginBottom: 24 }}>
-            <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#ffffff', marginBottom: 6 }}>
+            <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>
               Sign In to Your Portal
             </h2>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
@@ -475,7 +588,16 @@ export const LoginPage = () => {
             </button>
           </form>
 
-          <div style={{ marginTop: 24, textAlign: 'center', fontSize: '0.82rem', color: 'var(--text-secondary)', padding: '10px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ 
+            marginTop: 24, 
+            textAlign: 'center', 
+            fontSize: '0.82rem', 
+            color: 'var(--text-secondary)', 
+            padding: '10px 14px', 
+            borderRadius: 8, 
+            background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(241, 245, 249, 0.8)', 
+            border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(203, 213, 225, 0.7)' 
+          }}>
             🔒 <strong>Institutional Enrollment</strong>: Student accounts & original certificates are officially registered by College Administrators.
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import { ThemeProvider } from './context/ThemeContext.jsx';
 import { Navbar } from './components/Navbar.jsx';
 import { Sidebar } from './components/Sidebar.jsx';
 import { Chatbot } from './components/Chatbot.jsx';
@@ -65,107 +66,109 @@ const RootRedirect = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public Authentication Pages */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/docs" element={<AppLayout><DeveloperDocs /></AppLayout>} />
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public Authentication Pages */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/docs" element={<AppLayout><DeveloperDocs /></AppLayout>} />
 
-          {/* Root Redirect */}
-          <Route path="/" element={<RootRedirect />} />
+            {/* Root Redirect */}
+            <Route path="/" element={<RootRedirect />} />
 
-          {/* Student Protected Routes */}
-          <Route path="/student/dashboard" element={
-            <ProtectedRoute allowedRoles={['STUDENT']}>
-              <AppLayout><StudentDashboard /></AppLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/student/profile" element={
-            <ProtectedRoute allowedRoles={['STUDENT']}>
-              <AppLayout><StudentProfile /></AppLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/student/documents" element={
-            <ProtectedRoute allowedRoles={['STUDENT']}>
-              <AppLayout><StudentDocuments /></AppLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/student/requests" element={
-            <ProtectedRoute allowedRoles={['STUDENT']}>
-              <AppLayout><StudentRequests /></AppLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/student/verification" element={
-            <ProtectedRoute allowedRoles={['STUDENT']}>
-              <AppLayout><StudentVerification /></AppLayout>
-            </ProtectedRoute>
-          } />
+            {/* Student Protected Routes */}
+            <Route path="/student/dashboard" element={
+              <ProtectedRoute allowedRoles={['STUDENT']}>
+                <AppLayout><StudentDashboard /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/student/profile" element={
+              <ProtectedRoute allowedRoles={['STUDENT']}>
+                <AppLayout><StudentProfile /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/student/documents" element={
+              <ProtectedRoute allowedRoles={['STUDENT']}>
+                <AppLayout><StudentDocuments /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/student/requests" element={
+              <ProtectedRoute allowedRoles={['STUDENT']}>
+                <AppLayout><StudentRequests /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/student/verification" element={
+              <ProtectedRoute allowedRoles={['STUDENT']}>
+                <AppLayout><StudentVerification /></AppLayout>
+              </ProtectedRoute>
+            } />
 
-          {/* College Admin Protected Routes */}
-          <Route path="/college/dashboard" element={
-            <ProtectedRoute allowedRoles={['COLLEGE_ADMIN', 'SUPER_ADMIN']}>
-              <AppLayout><CollegeDashboard /></AppLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/college/students" element={
-            <ProtectedRoute allowedRoles={['COLLEGE_ADMIN', 'SUPER_ADMIN']}>
-              <AppLayout><CollegeStudents /></AppLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/college/documents" element={
-            <ProtectedRoute allowedRoles={['COLLEGE_ADMIN', 'SUPER_ADMIN']}>
-              <AppLayout><CollegeDocuments /></AppLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/college/upload" element={
-            <ProtectedRoute allowedRoles={['COLLEGE_ADMIN', 'SUPER_ADMIN']}>
-              <AppLayout><CollegeUpload /></AppLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/college/verification" element={
-            <ProtectedRoute allowedRoles={['COLLEGE_ADMIN', 'SUPER_ADMIN']}>
-              <AppLayout><CollegeVerification /></AppLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/college/requests" element={
-            <ProtectedRoute allowedRoles={['COLLEGE_ADMIN', 'SUPER_ADMIN']}>
-              <AppLayout><CollegeRequests /></AppLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/college/profile" element={
-            <ProtectedRoute allowedRoles={['COLLEGE_ADMIN', 'SUPER_ADMIN']}>
-              <AppLayout><CollegeProfile /></AppLayout>
-            </ProtectedRoute>
-          } />
+            {/* College Admin Protected Routes */}
+            <Route path="/college/dashboard" element={
+              <ProtectedRoute allowedRoles={['COLLEGE_ADMIN', 'SUPER_ADMIN']}>
+                <AppLayout><CollegeDashboard /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/college/students" element={
+              <ProtectedRoute allowedRoles={['COLLEGE_ADMIN', 'SUPER_ADMIN']}>
+                <AppLayout><CollegeStudents /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/college/documents" element={
+              <ProtectedRoute allowedRoles={['COLLEGE_ADMIN', 'SUPER_ADMIN']}>
+                <AppLayout><CollegeDocuments /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/college/upload" element={
+              <ProtectedRoute allowedRoles={['COLLEGE_ADMIN', 'SUPER_ADMIN']}>
+                <AppLayout><CollegeUpload /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/college/verification" element={
+              <ProtectedRoute allowedRoles={['COLLEGE_ADMIN', 'SUPER_ADMIN']}>
+                <AppLayout><CollegeVerification /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/college/requests" element={
+              <ProtectedRoute allowedRoles={['COLLEGE_ADMIN', 'SUPER_ADMIN']}>
+                <AppLayout><CollegeRequests /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/college/profile" element={
+              <ProtectedRoute allowedRoles={['COLLEGE_ADMIN', 'SUPER_ADMIN']}>
+                <AppLayout><CollegeProfile /></AppLayout>
+              </ProtectedRoute>
+            } />
 
-          {/* Super Admin Protected Routes */}
-          <Route path="/admin/dashboard" element={
-            <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
-              <AppLayout><AdminDashboard /></AppLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/colleges" element={
-            <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
-              <AppLayout><AdminColleges /></AppLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/audit-logs" element={
-            <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
-              <AppLayout><AdminAuditLogs /></AppLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/settings" element={
-            <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
-              <AppLayout><AdminSettings /></AppLayout>
-            </ProtectedRoute>
-          } />
+            {/* Super Admin Protected Routes */}
+            <Route path="/admin/dashboard" element={
+              <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                <AppLayout><AdminDashboard /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/colleges" element={
+              <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                <AppLayout><AdminColleges /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/audit-logs" element={
+              <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                <AppLayout><AdminAuditLogs /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/settings" element={
+              <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                <AppLayout><AdminSettings /></AppLayout>
+              </ProtectedRoute>
+            } />
 
-          {/* Catch-all redirect */}
-          <Route path="*" element={<RootRedirect />} />
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+            {/* Catch-all redirect */}
+            <Route path="*" element={<RootRedirect />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
