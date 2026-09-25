@@ -9,7 +9,7 @@ const router = express.Router();
 router.use(authenticate);
 
 router.get('/', getDocuments);
-router.post('/upload', requireRoles('COLLEGE_ADMIN', 'SUPER_ADMIN'), upload.single('file'), uploadDocument);
+router.post('/upload', requireRoles('COLLEGE_ADMIN', 'SUPER_ADMIN', 'STUDENT'), upload.single('file'), uploadDocument);
 
 // Document specific endpoints
 router.get('/:id', requireDocumentAccess, getDocumentById);

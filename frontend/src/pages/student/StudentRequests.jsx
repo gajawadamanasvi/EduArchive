@@ -1,12 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api.js';
 import { DocumentRequestModal } from '../../components/DocumentRequestModal.jsx';
-import { Send, FilePlus, Clock, CheckCircle2, XCircle, PackageCheck, AlertCircle } from 'lucide-react';
+import { CertificateViewerModal } from '../../components/CertificateViewerModal.jsx';
+import { 
+  Send, 
+  FilePlus, 
+  Clock, 
+  CheckCircle2, 
+  XCircle, 
+  PackageCheck, 
+  AlertCircle,
+  Eye,
+  Download,
+  ShieldCheck,
+  Sparkles
+} from 'lucide-react';
 
 export const StudentRequests = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [selectedViewDoc, setSelectedViewDoc] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
 
   const fetchRequests = async () => {
     try {
@@ -39,6 +54,55 @@ export const StudentRequests = () => {
     }
   };
 
+  const handleViewCertificate = (req) => {
+    // If request has enriched document object, use it; otherwise craft a fallback viewable object
+    const docToView = req.document || {
+      id: req.document_id,
+      document_id: req.document_id,
+      title: `${req.document_type} - ${req.student?.name || 'Student'}`,
+      document_type: req.document_type,
+      status: req.request_status === 'ISSUED' ? 'PHYSICAL_ISSUED' : 'VERIFIED',
+      student: req.student,
+      college: req.college
+    };
+    setSelectedViewDoc(docToView);
+  };
+
+  const handleDownloadCertificate = async (req) => {
+    const docId = req.document?.id || req.document_id;
+    if (!docId) {
+      alert('Document ID is not yet linked. Please refresh or contact admin.');
+      return;
+    }
+
+    try {
+      setDownloadingId(req.id);
+      const blob = await api.downloadDocument(docId);
+      const url = window.URL.createObjectURL(blob);
+      const a = window.document.createElement('a');
+      a.href = url;
+      
+      let ext = '.svg';
+      if (blob.type && blob.type.includes('pdf')) ext = '.pdf';
+      else if (blob.type && blob.type.includes('png')) ext = '.png';
+      else if (blob.type && (blob.type.includes('jpeg') || blob.type.includes('jpg'))) ext = '.jpg';
+      
+      const cleanTitle = (req.document_type || 'Certificate').replace(/[^a-zA-Z0-9]/g, '_');
+      const roll = req.student?.roll_number ? `_${req.student.roll_number}` : '';
+      a.download = `${cleanTitle}${roll}_Official${ext}`;
+      window.document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (err) {
+      alert('Failed to download certificate: ' + err.message);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const approvedCount = requests.filter(r => r.request_status === 'APPROVED' || r.request_status === 'ISSUED').length;
+
   return (
     <div className="page-wrapper animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       
@@ -49,7 +113,7 @@ export const StudentRequests = () => {
             Document Retrieval Requests
           </h2>
           <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-            Track requests submitted to your college administration for certificate issuance
+            Track requests submitted to your college administration and download approved certificates
           </p>
         </div>
 
@@ -62,6 +126,43 @@ export const StudentRequests = () => {
           <span>New Document Request</span>
         </button>
       </div>
+
+      {/* Approved Documents Notification Banner */}
+      {approvedCount > 0 && (
+        <div className="glass-panel" style={{
+          padding: '16px 20px',
+          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.08))',
+          border: '1px solid rgba(16, 185, 129, 0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 12
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 34,
+              height: 34,
+              borderRadius: 8,
+              background: 'rgba(16, 185, 129, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#34d399'
+            }}>
+              <CheckCircle2 size={18} />
+            </div>
+            <div>
+              <h4 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#f8fafc', marginBottom: 2 }}>
+                {approvedCount} Document Request{approvedCount > 1 ? 's' : ''} Approved by College Admin
+              </h4>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                Your requested certificates have been verified and are ready to view or download below.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Requests Table / List */}
       {loading ? (
@@ -89,46 +190,118 @@ export const StudentRequests = () => {
                 <th style={{ padding: '14px 18px' }}>Status</th>
                 <th style={{ padding: '14px 18px' }}>Submitted Date</th>
                 <th style={{ padding: '14px 18px' }}>College Admin Remark</th>
+                <th style={{ padding: '14px 18px', textAlign: 'center' }}>Official Actions</th>
               </tr>
             </thead>
             <tbody>
-              {requests.map((req) => (
-                <tr key={req.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <td style={{ padding: '14px 18px', fontWeight: 600, color: '#f8fafc' }}>
-                    {req.document_type}
-                  </td>
-                  <td style={{ padding: '14px 18px', color: 'var(--text-secondary)', maxWidth: 280 }}>
-                    {req.reason}
-                  </td>
-                  <td style={{ padding: '14px 18px' }}>
-                    {req.urgent ? (
-                      <span style={{ fontSize: '0.74rem', color: '#fbbf24', fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}>
-                        URGENT
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Standard</span>
-                    )}
-                  </td>
-                  <td style={{ padding: '14px 18px' }}>
-                    {getStatusBadge(req.request_status)}
-                  </td>
-                  <td style={{ padding: '14px 18px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    {new Date(req.request_date).toLocaleDateString()}
-                  </td>
-                  <td style={{ padding: '14px 18px', color: req.remarks ? '#60a5fa' : 'var(--text-muted)', fontSize: '0.84rem' }}>
-                    {req.remarks || 'Awaiting administrative review'}
-                  </td>
-                </tr>
-              ))}
+              {requests.map((req) => {
+                const isApprovedOrIssued = req.request_status === 'APPROVED' || req.request_status === 'ISSUED';
+                const hasDoc = Boolean(req.document || req.document_id);
+
+                return (
+                  <tr key={req.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '14px 18px', fontWeight: 600, color: '#f8fafc' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {isApprovedOrIssued ? (
+                          <ShieldCheck size={16} style={{ color: '#34d399', flexShrink: 0 }} />
+                        ) : (
+                          <Clock size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                        )}
+                        <span>{req.document_type}</span>
+                      </div>
+                    </td>
+
+                    <td style={{ padding: '14px 18px', color: 'var(--text-secondary)', maxWidth: 220 }}>
+                      {req.reason}
+                    </td>
+
+                    <td style={{ padding: '14px 18px' }}>
+                      {req.urgent ? (
+                        <span style={{ fontSize: '0.74rem', color: '#fbbf24', fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}>
+                          URGENT
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Standard</span>
+                      )}
+                    </td>
+
+                    <td style={{ padding: '14px 18px' }}>
+                      {getStatusBadge(req.request_status)}
+                    </td>
+
+                    <td style={{ padding: '14px 18px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                      {new Date(req.request_date).toLocaleDateString()}
+                    </td>
+
+                    <td style={{ padding: '14px 18px', color: req.remarks ? '#60a5fa' : 'var(--text-muted)', fontSize: '0.84rem' }}>
+                      {req.remarks || 'Awaiting administrative review'}
+                    </td>
+
+                    <td style={{ padding: '14px 18px', textAlign: 'center' }}>
+                      {isApprovedOrIssued && hasDoc ? (
+                        <div style={{ display: 'inline-flex', gap: 8 }}>
+                          <button
+                            onClick={() => handleViewCertificate(req)}
+                            className="btn-secondary"
+                            style={{
+                              padding: '6px 12px',
+                              fontSize: '0.78rem',
+                              borderRadius: 6,
+                              borderColor: 'rgba(59, 130, 246, 0.4)',
+                              color: '#60a5fa'
+                            }}
+                            title="View official digital certificate"
+                          >
+                            <Eye size={14} />
+                            <span>View</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleDownloadCertificate(req)}
+                            disabled={downloadingId === req.id}
+                            className="btn-primary"
+                            style={{
+                              padding: '6px 12px',
+                              fontSize: '0.78rem',
+                              borderRadius: 6
+                            }}
+                            title="Download verified certificate file"
+                          >
+                            <Download size={14} />
+                            <span>{downloadingId === req.id ? '...' : 'Download'}</span>
+                          </button>
+                        </div>
+                      ) : req.request_status === 'REJECTED' ? (
+                        <span style={{ fontSize: '0.76rem', color: '#f87171' }}>
+                          Request Declined
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                          Pending Approval
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
+      {/* Create Request Modal */}
       {showModal && (
         <DocumentRequestModal
           onClose={() => setShowModal(false)}
           onRequestCreated={fetchRequests}
+        />
+      )}
+
+      {/* Certificate Viewer / Download Modal */}
+      {selectedViewDoc && (
+        <CertificateViewerModal
+          document={selectedViewDoc}
+          onClose={() => setSelectedViewDoc(null)}
         />
       )}
 

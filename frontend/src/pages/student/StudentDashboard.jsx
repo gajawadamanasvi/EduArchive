@@ -5,6 +5,7 @@ import { DashboardCard } from '../../components/DashboardCard.jsx';
 import { DocumentCard } from '../../components/DocumentCard.jsx';
 import { DocumentRequestModal } from '../../components/DocumentRequestModal.jsx';
 import { AIVerificationModal } from '../../components/AIVerificationModal.jsx';
+import { CertificateViewerModal } from '../../components/CertificateViewerModal.jsx';
 import { 
   FileText, 
   CheckCircle2, 
@@ -13,10 +14,12 @@ import {
   AlertTriangle, 
   FilePlus, 
   Sparkles, 
-  ArrowRight,
-  ShieldCheck,
-  Building2,
-  PackageCheck
+  ArrowRight, 
+  ShieldCheck, 
+  Building2, 
+  PackageCheck,
+  Eye,
+  Download
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -27,6 +30,7 @@ export const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [selectedInspectDoc, setSelectedInspectDoc] = useState(null);
+  const [selectedViewDoc, setSelectedViewDoc] = useState(null);
 
   const loadData = async () => {
     try {
@@ -60,7 +64,13 @@ export const StudentDashboard = () => {
       const url = window.URL.createObjectURL(blob);
       const a = window.document.createElement('a');
       a.href = url;
-      a.download = `${doc.document_type.replace(/[^a-zA-Z0-9]/g, '_')}_Official_Verified.svg`;
+      let ext = '.svg';
+      if (blob.type && blob.type.includes('pdf')) ext = '.pdf';
+      else if (blob.type && blob.type.includes('png')) ext = '.png';
+      else if (blob.type && (blob.type.includes('jpeg') || blob.type.includes('jpg'))) ext = '.jpg';
+      const cleanTitle = (doc.document_type || doc.title || 'Certificate').replace(/[^a-zA-Z0-9]/g, '_');
+      const roll = user?.student?.roll_number ? `_${user.student.roll_number}` : '';
+      a.download = `${cleanTitle}${roll}_Official${ext}`;
       window.document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -71,7 +81,7 @@ export const StudentDashboard = () => {
   };
 
   const handleView = (doc) => {
-    window.open(`/api/documents/${doc.id}/view`, '_blank');
+    setSelectedViewDoc(doc);
   };
 
   return (
@@ -267,6 +277,13 @@ export const StudentDashboard = () => {
           onClose={() => setSelectedInspectDoc(null)}
           onStatusUpdated={loadData}
           isCollegeAdmin={false}
+        />
+      )}
+
+      {selectedViewDoc && (
+        <CertificateViewerModal
+          document={selectedViewDoc}
+          onClose={() => setSelectedViewDoc(null)}
         />
       )}
 

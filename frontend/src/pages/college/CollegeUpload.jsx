@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api.js';
 import { AIVerificationModal } from '../../components/AIVerificationModal.jsx';
+import { CertificateViewerModal } from '../../components/CertificateViewerModal.jsx';
+import { CameraOCRScanner } from '../../components/CameraOCRScanner.jsx';
 import { 
   FilePlus, 
   UploadCloud, 
@@ -9,9 +11,11 @@ import {
   User, 
   CheckCircle2, 
   AlertTriangle, 
-  ShieldAlert,
-  ArrowRight,
-  FileText
+  ShieldAlert, 
+  ArrowRight, 
+  FileText,
+  Camera,
+  ScanLine
 } from 'lucide-react';
 
 export const CollegeUpload = () => {
@@ -26,6 +30,9 @@ export const CollegeUpload = () => {
   const [sampleScenario, setSampleScenario] = useState('consistent'); // 'consistent', 'needs_review', 'mismatch'
   const [uploading, setUploading] = useState(false);
   const [uploadedResult, setUploadedResult] = useState(null);
+  const [selectedViewDoc, setSelectedViewDoc] = useState(null);
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
+  const [customOcrText, setCustomOcrText] = useState('');
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -68,6 +75,27 @@ export const CollegeUpload = () => {
     }
   };
 
+  const handleCameraCapture = ({ file: capturedFile, ocrText, extractedFields }) => {
+    if (capturedFile) {
+      setFile(capturedFile);
+    }
+    if (ocrText) {
+      setCustomOcrText(ocrText);
+    }
+    if (extractedFields) {
+      if (extractedFields.studentName && extractedFields.studentName !== 'Candidate Name') {
+        const matchingStu = students.find(s => 
+          (s.roll_number && extractedFields.rollNumber && s.roll_number.toLowerCase() === extractedFields.rollNumber.toLowerCase()) ||
+          (s.user?.name && s.user.name.toLowerCase().includes(extractedFields.studentName.toLowerCase()))
+        );
+        if (matchingStu) {
+          setSelectedStudentId(matchingStu.id);
+          setTitle(`${documentType} - ${matchingStu.user?.name}`);
+        }
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedStudentId) {
@@ -85,6 +113,9 @@ export const CollegeUpload = () => {
     formData.append('is_original', isOriginal ? 'true' : 'false');
     formData.append('locker_reference', lockerReference || '');
     formData.append('run_ai_verification', 'true');
+    if (customOcrText) {
+      formData.append('custom_ocr_text', customOcrText);
+    }
 
     if (file) {
       formData.append('file', file);
@@ -232,11 +263,34 @@ export const CollegeUpload = () => {
                 Scan Upload & AI Verification
               </h3>
 
+              {/* Live Camera Scanner Button */}
+              <button
+                type="button"
+                onClick={() => setShowCameraScanner(true)}
+                className="btn-primary"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  marginBottom: 14,
+                  background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 10,
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  boxShadow: '0 4px 15px rgba(37, 99, 235, 0.35)'
+                }}
+              >
+                <Camera size={18} />
+                <span>Open Live Camera (AI OCR Scanner)</span>
+              </button>
+
               {/* Drag & Drop Box */}
               <div style={{
                 border: '2px dashed #334155',
                 borderRadius: 12,
-                padding: '28px 16px',
+                padding: '24px 16px',
                 textAlign: 'center',
                 background: 'rgba(15, 23, 42, 0.6)',
                 cursor: 'pointer',
@@ -377,6 +431,17 @@ export const CollegeUpload = () => {
             >
               Upload Another Document
             </button>
+            {uploadedResult.document && (
+              <button
+                type="button"
+                onClick={() => setSelectedViewDoc(uploadedResult.document)}
+                className="btn-secondary"
+                style={{ borderColor: 'rgba(59, 130, 246, 0.4)', color: '#60a5fa' }}
+              >
+                <FileText size={16} />
+                <span>Preview Certificate</span>
+              </button>
+            )}
             <button
               onClick={() => navigate('/college/documents')}
               className="btn-primary"
@@ -386,6 +451,20 @@ export const CollegeUpload = () => {
             </button>
           </div>
         </div>
+      )}
+
+      {selectedViewDoc && (
+        <CertificateViewerModal
+          document={selectedViewDoc}
+          onClose={() => setSelectedViewDoc(null)}
+        />
+      )}
+
+      {showCameraScanner && (
+        <CameraOCRScanner
+          onCapture={handleCameraCapture}
+          onClose={() => setShowCameraScanner(false)}
+        />
       )}
 
     </div>

@@ -1,13 +1,13 @@
 import express from 'express';
 import { getAllColleges, getCollegeById, createCollege, updateCollegeVerificationStatus, updateCollegeProfile } from '../controllers/collegeController.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, authenticateOptional } from '../middleware/auth.js';
 import { requireRoles } from '../middleware/rbac.js';
 
 const router = express.Router();
 
-// Public / Authenticated read
-router.get('/', getAllColleges);
-router.get('/:id', getCollegeById);
+// Public / Authenticated read (with optional user extraction)
+router.get('/', authenticateOptional, getAllColleges);
+router.get('/:id', authenticateOptional, getCollegeById);
 
 // Protected routes
 router.use(authenticate);

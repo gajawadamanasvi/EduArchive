@@ -240,34 +240,65 @@ export const verifyDocumentWithAI = async ({
 
 // Internal rule-based entity parser
 function extractCertificateFields(ocrText, docType) {
-  const lines = (ocrText || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const text = ocrText || '';
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   
   let studentName = '';
   let rollNumber = '';
   let collegeName = '';
   let course = '';
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Name Extraction
     if (!studentName) {
-      const match = line.match(/(?:Student Name|Name of Candidate|Candidate|Name)\s*[:\-]\s*([A-Za-z .]{3,40})/i);
-      if (match) studentName = match[1].trim();
+      let match = line.match(/(?:Student Name|Name of Candidate|Candidate Name|Candidate|Student|Name|certify that|certifying that|awarded to|presented to)\s*[:\-\.]?\s*([A-Za-z .]{3,40})/i);
+      if (match && match[1].trim().length >= 3 && !/university|institute|college|examination|republic|certificate|board/i.test(match[1])) {
+        studentName = match[1].trim();
+      } else if (/^(?:Name|Student Name|Candidate Name)[:\-]?$/i.test(line) && i + 1 < lines.length) {
+        studentName = lines[i + 1].trim();
+      }
     }
+
+    // Roll / Registration Number Extraction
     if (!rollNumber) {
-      const match = line.match(/(?:Roll No|Registration No|Reg\.?\s*No|Roll Number|Student ID)\s*[:\-]\s*([A-Za-z0-9\/\-_]{4,30})/i);
-      if (match) rollNumber = match[1].trim();
+      let match = line.match(/(?:Roll No|Registration No|Reg\.?\s*No|Roll Number|Student ID|Hall Ticket No|HT No|PIN|Seat No)\s*[:\-\.]?\s*([A-Za-z0-9\/\-_]{3,30})/i);
+      if (match && match[1].trim().length >= 3) {
+        rollNumber = match[1].trim();
+      } else if (/(?:Roll|Reg|ID)[:\-]?$/i.test(line) && i + 1 < lines.length) {
+        rollNumber = lines[i + 1].trim();
+      } else {
+        const patternMatch = line.match(/\b([A-Z]{2,6}\/[A-Z0-9]{2,5}\/\d{2,4}\/\d{2,6})\b/);
+        if (patternMatch) rollNumber = patternMatch[1];
+      }
     }
+
+    // College / University Entity Extraction
     if (!collegeName) {
-      const match = line.match(/(?:Institution|College|University|Institute)\s*[:\-]\s*([A-Za-z0-9 .,&-]{5,60})/i);
-      if (match) collegeName = match[1].trim();
+      let match = line.match(/(?:Institution|College|University|Institute|Academy|Affiliated to)\s*[:\-\.]?\s*([A-Za-z0-9 .,&-]{5,70})/i);
+      if (match && match[1].trim().length >= 5) {
+        collegeName = match[1].trim();
+      } else if (/(?:Institute of Technology|Engineering College|University|Academy of Sciences|Technological University)/i.test(line)) {
+        collegeName = line.trim();
+      }
     }
+
+    // Course / Program Extraction
     if (!course) {
-      const match = line.match(/(?:Degree|Course|Program)\s*[:\-]\s*([A-Za-z .,&-]{3,50})/i);
-      if (match) course = match[1].trim();
+      if (!/^(?:OFFICIAL|PROVISIONAL)?\s*DEGREE\s*CERTIFICATE/i.test(line)) {
+        let match = line.match(/(?:(?:Degree|Course|Program|Branch|Discipline)\s*[:\-\.]\s*([A-Za-z0-9 .,&-]{3,60}))/i) ||
+                    line.match(/(?:completed|awarded the degree of|admitted to the degree of)\s*(?:in|for)?\s*([A-Za-z0-9 .,&-]{3,60})/i);
+        if (match && match[1].trim().length >= 3 && !/certificate/i.test(match[1])) {
+          course = match[1].trim();
+        } else if (/(?:Bachelor of Technology|Bachelor of Engineering|Master of Technology|B\.Tech|B\.E\.|B\.Sc|M\.Tech|Computer Science|Information Technology)/i.test(line)) {
+          course = line.trim();
+        }
+      }
     }
   }
 
-  const text = ocrText || '';
-  const hasSecuritySeal = text.includes('SEAL') || text.includes('OFFICIAL') || text.includes('VERIFIED') || text.includes('REGISTRAR') || text.includes('CONTROLLER') || text.includes('WATERMARK');
+  const hasSecuritySeal = /seal|official|verified|registrar|controller|watermark|authenticated|signature|stamp/i.test(text);
 
   return {
     studentName: studentName || 'Extracted Name',

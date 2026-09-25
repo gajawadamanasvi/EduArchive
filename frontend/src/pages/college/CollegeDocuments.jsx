@@ -4,6 +4,7 @@ import { DocumentCard } from '../../components/DocumentCard.jsx';
 import { DocumentTable } from '../../components/DocumentTable.jsx';
 import { AIVerificationModal } from '../../components/AIVerificationModal.jsx';
 import { PhysicalIssueModal } from '../../components/PhysicalIssueModal.jsx';
+import { CertificateViewerModal } from '../../components/CertificateViewerModal.jsx';
 import { 
   FileText, 
   Search, 
@@ -12,7 +13,9 @@ import {
   FilePlus, 
   Sparkles, 
   PackageCheck,
-  Building2 
+  Building2,
+  Eye,
+  Download
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -24,6 +27,7 @@ export const CollegeDocuments = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedInspectDoc, setSelectedInspectDoc] = useState(null);
   const [selectedPhysicalDoc, setSelectedPhysicalDoc] = useState(null);
+  const [selectedViewDoc, setSelectedViewDoc] = useState(null);
 
   const fetchDocs = async () => {
     try {
@@ -57,7 +61,13 @@ export const CollegeDocuments = () => {
       const url = window.URL.createObjectURL(blob);
       const a = window.document.createElement('a');
       a.href = url;
-      a.download = `${doc.document_type.replace(/[^a-zA-Z0-9]/g, '_')}_Official_Verified.svg`;
+      let ext = '.svg';
+      if (blob.type && blob.type.includes('pdf')) ext = '.pdf';
+      else if (blob.type && blob.type.includes('png')) ext = '.png';
+      else if (blob.type && (blob.type.includes('jpeg') || blob.type.includes('jpg'))) ext = '.jpg';
+      const cleanTitle = (doc.document_type || doc.title || 'Certificate').replace(/[^a-zA-Z0-9]/g, '_');
+      const roll = doc.student?.roll_number ? `_${doc.student.roll_number}` : '';
+      a.download = `${cleanTitle}${roll}_Verified${ext}`;
       window.document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -68,7 +78,7 @@ export const CollegeDocuments = () => {
   };
 
   const handleView = (doc) => {
-    window.open(`/api/documents/${doc.id}/view`, '_blank');
+    setSelectedViewDoc(doc);
   };
 
   return (
@@ -217,6 +227,13 @@ export const CollegeDocuments = () => {
           document={selectedPhysicalDoc}
           onClose={() => setSelectedPhysicalDoc(null)}
           onUpdated={fetchDocs}
+        />
+      )}
+
+      {selectedViewDoc && (
+        <CertificateViewerModal
+          document={selectedViewDoc}
+          onClose={() => setSelectedViewDoc(null)}
         />
       )}
 

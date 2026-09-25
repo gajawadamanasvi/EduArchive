@@ -40,7 +40,7 @@ export const Navbar = () => {
   };
 
   const getRoleLabel = () => {
-    if (isSuperAdmin) return 'SUPER ADMIN';
+    if (isSuperAdmin) return 'TELANGANA SUPER ADMIN';
     if (isCollegeAdmin) return 'COLLEGE ADMIN';
     return 'STUDENT';
   };
