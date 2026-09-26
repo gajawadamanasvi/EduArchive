@@ -1,60 +1,90 @@
 export const DEMO_USERS = [
   {
     key: 'superadmin',
-    name: 'Dr. Evelyn Vance (Super Admin)',
-    email: 'superadmin@system.edu',
-    password: 'AdminPass@123',
+    name: 'Main Administrator (Super Admin)',
+    email: 'superadmin@gmail.com',
+    password: 'superadmin@123',
     role: 'SUPER_ADMIN',
     badge: 'Super Admin',
     desc: 'Platform-wide regulator, approve colleges, audit logs'
   },
-  // College Administrators
+  // College Administrators (Separate Gmail for each college)
   {
     key: 'apex_admin',
-    name: 'Prof. Rajesh Sharma (Dean)',
+    name: 'Prof. Rajesh Sharma (Apex Admin)',
     collegeName: 'Apex Institute of Technology',
-    email: 'admin@apex.edu',
-    password: 'CollegePass@123',
+    email: 'apex.admin@gmail.com',
+    password: 'apexadmin@123',
     role: 'COLLEGE_ADMIN',
     badge: 'Apex Tech Admin',
     desc: 'Manage Apex students, AI verification, physical issuance'
   },
   {
     key: 'global_admin',
-    name: 'Dr. Michael Chang (Registrar)',
+    name: 'Dr. Michael Chang (Global Admin)',
     collegeName: 'Global University of Engineering & Science',
-    email: 'admin@globaluniv.edu',
-    password: 'CollegePass@123',
+    email: 'global.admin@gmail.com',
+    password: 'globaladmin@123',
     role: 'COLLEGE_ADMIN',
     badge: 'Global Univ Admin',
     desc: 'Manage Global Univ students & verification records'
   },
   {
     key: 'tkrec_admin',
-    name: 'Prof. K. Venkatesh (Principal)',
+    name: 'Prof. K. Venkatesh (TKREC Admin)',
     collegeName: 'Teegala Krishna Reddy Engineering College',
-    email: 'admin@tkrec.ac.in',
-    password: 'CollegePass@123',
+    email: 'tkrec.admin@gmail.com',
+    password: 'tkrecadmin@123',
     role: 'COLLEGE_ADMIN',
     badge: 'TKREC Admin',
     desc: 'Manage TKREC students, original archives, vault locker tracking'
   },
   {
     key: 'cbit_admin',
-    name: 'Dr. P. Ravinder Reddy (Dean)',
+    name: 'Dr. P. Ravinder Reddy (CBIT Admin)',
     collegeName: 'Chaitanya Bharathi Institute of Technology',
-    email: 'admin@cbit.ac.in',
-    password: 'CollegePass@123',
+    email: 'cbit.admin@gmail.com',
+    password: 'cbitadmin@123',
     role: 'COLLEGE_ADMIN',
     badge: 'CBIT Admin',
     desc: 'Manage CBIT students & autonomous verification records'
   },
   {
+    key: 'vnr_admin',
+    name: 'Prof. C. Kiran (VNR Admin)',
+    collegeName: 'VNR Vignana Jyothi Institute of Engineering & Technology',
+    email: 'vnr.admin@gmail.com',
+    password: 'vnradmin@123',
+    role: 'COLLEGE_ADMIN',
+    badge: 'VNR Admin',
+    desc: 'Manage VNR students and academic verification records'
+  },
+  {
+    key: 'ou_admin',
+    name: 'Dr. S. Ramachandram (OU Admin)',
+    collegeName: 'University College of Engineering, Osmania University',
+    email: 'ou.admin@gmail.com',
+    password: 'ouadmin@123',
+    role: 'COLLEGE_ADMIN',
+    badge: 'OU Admin',
+    desc: 'Manage OU engineering students and degree archives'
+  },
+  {
+    key: 'vasavi_admin',
+    name: 'Prof. T. V. Rao (Vasavi Admin)',
+    collegeName: 'Vasavi College of Engineering',
+    email: 'vasavi.admin@gmail.com',
+    password: 'vasaviadmin@123',
+    role: 'COLLEGE_ADMIN',
+    badge: 'Vasavi Admin',
+    desc: 'Manage Vasavi College student certificates & verification'
+  },
+  {
     key: 'sunrise_admin',
-    name: 'Dr. S. N. Rao (Director)',
+    name: 'Dr. S. N. Rao (Sunrise Admin)',
     collegeName: 'Sunrise Academy of Science & Applied Tech',
-    email: 'admin@sunrise.edu',
-    password: 'CollegePass@123',
+    email: 'sunrise.admin@gmail.com',
+    password: 'sunriseadmin@123',
     role: 'COLLEGE_ADMIN',
     badge: 'Sunrise Admin',
     desc: 'Manage Sunrise Academy student documents'

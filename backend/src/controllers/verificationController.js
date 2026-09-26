@@ -1,6 +1,7 @@
 import db from '../config/db.js';
 import { logAudit } from '../services/auditService.js';
 import { verifyDocumentWithAI } from '../ai/verificationAgent.js';
+import { runEduArchiveWorkflow } from '../agents/index.js';
 
 export const runAIVerificationScan = async (req, res) => {
   try {
@@ -18,15 +19,57 @@ export const runAIVerificationScan = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Forbidden: Cannot scan documents from another college.' });
     }
 
-    const aiResult = await verifyDocumentWithAI({
-      documentId: doc.id,
-      filePath: doc.file_path,
-      fileName: doc.file_name,
-      documentType: doc.document_type,
-      studentId: doc.student_id,
-      collegeId: doc.college_id,
-      customOcrText: custom_ocr_text
-    });
+    // 1. Run LangGraph Workflow
+    let aiResult;
+    try {
+      const graphResult = await runEduArchiveWorkflow({
+        userId: req.user.id,
+        userRole: req.user.role,
+        userName: req.user.name,
+        userCollegeId: req.user.college_id,
+        studentId: doc.student_id,
+        documentId: doc.id,
+        documentType: doc.document_type,
+        fileName: doc.file_name,
+        rawOcrText: custom_ocr_text,
+        userRequest: `Verify document ${doc.file_name} for student ${doc.student_id}`
+      });
+
+      if (graphResult.success && graphResult.verificationResult) {
+        const v = graphResult.verificationResult;
+        const anom = graphResult.anomalyResult || {};
+        aiResult = {
+          verifiedAt: new Date().toISOString(),
+          confidenceScore: Math.round((v.confidence || 0.8) * 100),
+          classification: v.status === 'VERIFIED' ? 'CONSISTENT' : (v.status === 'MISMATCH' ? 'SUSPICIOUS_MISMATCH' : 'NEEDS_MANUAL_REVIEW'),
+          statusBadge: v.status === 'VERIFIED' ? 'CONSISTENT' : (v.status === 'MISMATCH' ? 'SUSPICIOUS' : 'NEEDS_REVIEW'),
+          ocrTextSnippet: custom_ocr_text ? (custom_ocr_text.substring(0, 500) + (custom_ocr_text.length > 500 ? '...' : '')) : 'Simulated OCR stream verified.',
+          extractedFields: graphResult.extractedData || {},
+          fieldChecks: v.fieldChecks || [],
+          recommendation: v.recommendation || 'Document analysis completed.',
+          anomalyRisk: anom.riskLevel || 'LOW',
+          criticDecision: graphResult.criticResult?.decision || 'APPROVE',
+          requiresHumanReview: graphResult.requiresHumanReview || false,
+          workflowSteps: graphResult.steps || [],
+          disclaimer: 'LangGraph Multi-Agent Document Verification Pipeline. Final authority rests with institutional administrators.'
+        };
+      }
+    } catch (graphErr) {
+      console.warn('[LangGraph Verification Warn]: Reverting to base verification engine:', graphErr.message);
+    }
+
+    // Fallback to direct verification engine if graphResult was null
+    if (!aiResult) {
+      aiResult = await verifyDocumentWithAI({
+        documentId: doc.id,
+        filePath: doc.file_path,
+        fileName: doc.file_name,
+        documentType: doc.document_type,
+        studentId: doc.student_id,
+        collegeId: doc.college_id,
+        customOcrText: custom_ocr_text
+      });
+    }
 
     // Save verification log
     const existingVerif = db.findOne('verification_records', v => String(v.document_id) === String(doc.id));

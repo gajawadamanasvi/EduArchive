@@ -34,8 +34,12 @@ export const AdminColleges = () => {
     website: '',
     university: 'Jawaharlal Nehru Technological University Hyderabad (JNTUH)',
     address: 'Hyderabad, Telangana',
-    state: 'Telangana'
+    state: 'Telangana',
+    admin_name: '',
+    admin_gmail: '',
+    admin_password: ''
   });
+  const [createdAdminCreds, setCreatedAdminCreds] = useState(null);
   const [creating, setCreating] = useState(false);
   const [modalError, setModalError] = useState(null);
 
@@ -63,6 +67,18 @@ export const AdminColleges = () => {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     fetchColleges();
+  };
+
+  const handleCollegeCodeChange = (code) => {
+    const upperCode = code.toUpperCase();
+    const cleanCode = code.toLowerCase().replace(/[^a-z0-9]/g, '');
+    setNewCollege(prev => ({
+      ...prev,
+      college_code: upperCode,
+      // Auto-suggest admin gmail & password if untouched or previously matching
+      admin_gmail: prev.admin_gmail && !prev.admin_gmail.endsWith('.admin@gmail.com') ? prev.admin_gmail : (cleanCode ? `${cleanCode}.admin@gmail.com` : ''),
+      admin_password: prev.admin_password && !prev.admin_password.endsWith('admin@123') ? prev.admin_password : (cleanCode ? `${cleanCode}admin@123` : '')
+    }));
   };
 
   const handleToggleVerification = async (collegeId, currentStatus) => {
@@ -101,6 +117,9 @@ export const AdminColleges = () => {
         state: 'Telangana'
       });
       if (data.success) {
+        if (data.adminCredentials) {
+          setCreatedAdminCreds(data.adminCredentials);
+        }
         setShowAddModal(false);
         setNewCollege({
           name: '',
@@ -110,7 +129,10 @@ export const AdminColleges = () => {
           website: '',
           university: 'Jawaharlal Nehru Technological University Hyderabad (JNTUH)',
           address: 'Hyderabad, Telangana',
-          state: 'Telangana'
+          state: 'Telangana',
+          admin_name: '',
+          admin_gmail: '',
+          admin_password: ''
         });
         fetchColleges();
       }
@@ -381,7 +403,7 @@ export const AdminColleges = () => {
                     required
                     placeholder="e.g. TKREC-HYD"
                     value={newCollege.college_code}
-                    onChange={(e) => setNewCollege({ ...newCollege, college_code: e.target.value })}
+                    onChange={(e) => handleCollegeCodeChange(e.target.value)}
                     className="input-field"
                   />
                 </div>
@@ -396,6 +418,67 @@ export const AdminColleges = () => {
                     className="input-field"
                     style={{ background: 'rgba(255,255,255,0.05)', color: '#34d399', fontWeight: 700 }}
                   />
+                </div>
+              </div>
+
+              {/* Dedicated College Admin Account Configuration */}
+              <div style={{
+                background: 'rgba(59, 130, 246, 0.08)',
+                border: '1px solid rgba(59, 130, 246, 0.25)',
+                borderRadius: 12,
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', fontWeight: 700, color: '#60a5fa' }}>
+                  <Users size={15} />
+                  <span>College Administrator Credentials (Dedicated Login)</span>
+                </div>
+                
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                    Admin Name / Designation
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Prof. K. Venkatesh (Principal / Dean)"
+                    value={newCollege.admin_name}
+                    onChange={(e) => setNewCollege({ ...newCollege, admin_name: e.target.value })}
+                    className="input-field"
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                      Admin Gmail ID <span style={{ color: '#fbbf24' }}>*</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="e.g. tkrec.admin@gmail.com"
+                      value={newCollege.admin_gmail}
+                      onChange={(e) => setNewCollege({ ...newCollege, admin_gmail: e.target.value })}
+                      className="input-field"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                      Admin Password <span style={{ color: '#fbbf24' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. tkrecadmin@123"
+                      value={newCollege.admin_password}
+                      onChange={(e) => setNewCollege({ ...newCollege, admin_password: e.target.value })}
+                      className="input-field"
+                    />
+                  </div>
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  🔒 Dedicated administrator account for this college. Regular students cannot access this admin block.
                 </div>
               </div>
 
@@ -472,10 +555,84 @@ export const AdminColleges = () => {
                 </button>
                 <button type="submit" disabled={creating} className="btn-primary" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
                   <Plus size={16} />
-                  <span>{creating ? 'Adding...' : 'Register Telangana College'}</span>
+                  <span>{creating ? 'Adding & Activating...' : 'Register Telangana College'}</span>
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Activated Credentials Success Popup */}
+      {createdAdminCreds && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.8)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 110,
+          padding: '20px'
+        }}>
+          <div className="glass-panel animate-fade-in" style={{
+            width: '100%',
+            maxWidth: 480,
+            padding: '28px',
+            border: '1px solid rgba(16, 185, 129, 0.5)',
+            boxShadow: '0 0 30px rgba(16, 185, 129, 0.2)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ShieldCheck size={24} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#ffffff' }}>College Admin Account Activated</h3>
+                <div style={{ fontSize: '0.78rem', color: '#34d399', fontWeight: 600 }}>Credentials Ready for Handover</div>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: 16 }}>
+              The college and its dedicated administrator account have been created. Students cannot access this block.
+            </p>
+
+            <div style={{ background: 'rgba(15, 23, 42, 0.85)', padding: '16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Admin Name</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#ffffff' }}>{createdAdminCreds.name}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Admin Gmail ID</div>
+                <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#60a5fa' }}>{createdAdminCreds.email}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Admin Password</div>
+                <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#34d399', letterSpacing: '0.04em' }}>{createdAdminCreds.password}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(`Gmail: ${createdAdminCreds.email}\nPassword: ${createdAdminCreds.password}`);
+                  alert('Copied college admin credentials to clipboard!');
+                }}
+                className="btn-secondary"
+                style={{ fontSize: '0.82rem' }}
+              >
+                Copy Credentials
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreatedAdminCreds(null)}
+                className="btn-primary"
+                style={{ fontSize: '0.82rem', background: 'linear-gradient(135deg, #10b981, #059669)' }}
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -39,6 +39,10 @@ class RelationalDatabase {
   }
 
   init() {
+    this.reload();
+  }
+
+  reload() {
     try {
       if (fs.existsSync(DB_FILE)) {
         const fileContent = fs.readFileSync(DB_FILE, 'utf-8');

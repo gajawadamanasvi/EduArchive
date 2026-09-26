@@ -15,8 +15,15 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 export const seedDatabase = async () => {
   console.log('[SEED] Starting full relational database seed...');
 
-  const superAdminHash = await bcrypt.hash('AdminPass@123', 10);
-  const collegePassHash = await bcrypt.hash('CollegePass@123', 10);
+  const superAdminHash = await bcrypt.hash('superadmin@123', 10);
+  const apexAdminHash = await bcrypt.hash('apexadmin@123', 10);
+  const globalAdminHash = await bcrypt.hash('globaladmin@123', 10);
+  const tkrecAdminHash = await bcrypt.hash('tkrecadmin@123', 10);
+  const cbitAdminHash = await bcrypt.hash('cbitadmin@123', 10);
+  const vnrAdminHash = await bcrypt.hash('vnradmin@123', 10);
+  const ouAdminHash = await bcrypt.hash('ouadmin@123', 10);
+  const vasaviAdminHash = await bcrypt.hash('vasaviadmin@123', 10);
+  const sunriseAdminHash = await bcrypt.hash('sunriseadmin@123', 10);
   const studentPassHash = await bcrypt.hash('StudentPass@123', 10);
 
   // 1. Colleges
@@ -155,8 +162,8 @@ export const seedDatabase = async () => {
   const users = [
     {
       id: 'usr_superadmin',
-      name: 'Dr. Evelyn Vance (Super Admin)',
-      email: 'superadmin@system.edu',
+      name: 'Main Administrator (Super Admin)',
+      email: 'superadmin@gmail.com',
       password_hash: superAdminHash,
       role: 'SUPER_ADMIN',
       status: 'ACTIVE',
@@ -166,9 +173,9 @@ export const seedDatabase = async () => {
     },
     {
       id: 'usr_admin_apex',
-      name: 'Prof. Rajesh Sharma (Dean)',
-      email: 'admin@apex.edu',
-      password_hash: collegePassHash,
+      name: 'Prof. Rajesh Sharma (Apex Admin)',
+      email: 'apex.admin@gmail.com',
+      password_hash: apexAdminHash,
       role: 'COLLEGE_ADMIN',
       status: 'ACTIVE',
       college_id: 'col_apex',
@@ -177,9 +184,9 @@ export const seedDatabase = async () => {
     },
     {
       id: 'usr_admin_global',
-      name: 'Dr. Michael Chang (Registrar)',
-      email: 'admin@globaluniv.edu',
-      password_hash: collegePassHash,
+      name: 'Dr. Michael Chang (Global Admin)',
+      email: 'global.admin@gmail.com',
+      password_hash: globalAdminHash,
       role: 'COLLEGE_ADMIN',
       status: 'ACTIVE',
       college_id: 'col_global',
@@ -188,9 +195,9 @@ export const seedDatabase = async () => {
     },
     {
       id: 'usr_admin_tkrec',
-      name: 'Prof. K. Venkatesh (Principal)',
-      email: 'admin@tkrec.ac.in',
-      password_hash: collegePassHash,
+      name: 'Prof. K. Venkatesh (TKREC Admin)',
+      email: 'tkrec.admin@gmail.com',
+      password_hash: tkrecAdminHash,
       role: 'COLLEGE_ADMIN',
       status: 'ACTIVE',
       college_id: 'col_tkrec',
@@ -199,9 +206,9 @@ export const seedDatabase = async () => {
     },
     {
       id: 'usr_admin_cbit',
-      name: 'Dr. P. Ravinder Reddy (Dean)',
-      email: 'admin@cbit.ac.in',
-      password_hash: collegePassHash,
+      name: 'Dr. P. Ravinder Reddy (CBIT Admin)',
+      email: 'cbit.admin@gmail.com',
+      password_hash: cbitAdminHash,
       role: 'COLLEGE_ADMIN',
       status: 'ACTIVE',
       college_id: 'col_cbit',
@@ -209,10 +216,43 @@ export const seedDatabase = async () => {
       created_at: '2026-02-20T09:00:00.000Z'
     },
     {
+      id: 'usr_admin_vnr',
+      name: 'Prof. C. Kiran (VNR Admin)',
+      email: 'vnr.admin@gmail.com',
+      password_hash: vnrAdminHash,
+      role: 'COLLEGE_ADMIN',
+      status: 'ACTIVE',
+      college_id: 'col_vnr',
+      avatar_url: 'https://api.dicebear.com/7.x/initials/svg?seed=VNRAdmin',
+      created_at: '2026-02-22T09:00:00.000Z'
+    },
+    {
+      id: 'usr_admin_ou',
+      name: 'Dr. S. Ramachandram (OU Admin)',
+      email: 'ou.admin@gmail.com',
+      password_hash: ouAdminHash,
+      role: 'COLLEGE_ADMIN',
+      status: 'ACTIVE',
+      college_id: 'col_ou',
+      avatar_url: 'https://api.dicebear.com/7.x/initials/svg?seed=OUAdmin',
+      created_at: '2026-02-25T09:00:00.000Z'
+    },
+    {
+      id: 'usr_admin_vasavi',
+      name: 'Prof. T. V. Rao (Vasavi Admin)',
+      email: 'vasavi.admin@gmail.com',
+      password_hash: vasaviAdminHash,
+      role: 'COLLEGE_ADMIN',
+      status: 'ACTIVE',
+      college_id: 'col_vasavi',
+      avatar_url: 'https://api.dicebear.com/7.x/initials/svg?seed=VasaviAdmin',
+      created_at: '2026-02-28T09:00:00.000Z'
+    },
+    {
       id: 'usr_admin_sunrise',
-      name: 'Dr. S. N. Rao (Director)',
-      email: 'admin@sunrise.edu',
-      password_hash: collegePassHash,
+      name: 'Dr. S. N. Rao (Sunrise Admin)',
+      email: 'sunrise.admin@gmail.com',
+      password_hash: sunriseAdminHash,
       role: 'COLLEGE_ADMIN',
       status: 'ACTIVE',
       college_id: 'col_sunrise',
@@ -853,9 +893,10 @@ export const seedDatabase = async () => {
 };
 
 // If run directly
-if (process.argv[1] && process.argv[1].endsWith('seed.js')) {
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(__filename)) {
   seedDatabase().then(() => {
     console.log('[SEED] Seeding complete.');
-    process.exit(0);
   });
 }
+
+

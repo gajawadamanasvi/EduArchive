@@ -179,6 +179,29 @@ export const AIVerificationModal = ({
             </div>
           ) : (
             <>
+              {/* High-Visibility Mismatch Alert */}
+              {classification === 'SUSPICIOUS_MISMATCH' && (
+                <div style={{
+                  padding: '16px',
+                  borderRadius: 10,
+                  background: 'rgba(244, 63, 94, 0.15)',
+                  border: '2px solid rgba(244, 63, 94, 0.6)',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 12
+                }}>
+                  <ShieldAlert size={26} style={{ color: '#fb7185', flexShrink: 0, marginTop: 2 }} />
+                  <div>
+                    <div style={{ fontWeight: 800, color: '#fb7185', fontSize: '0.98rem' }}>
+                      ⚠️ CRITICAL IDENTITY MISMATCH DETECTED
+                    </div>
+                    <div style={{ fontSize: '0.84rem', color: '#fecdd3', marginTop: 4, lineHeight: 1.45 }}>
+                      The candidate name on this uploaded certificate does NOT match registered student <strong>{document.student?.name}</strong>. The certificate has been flagged as suspicious.
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Score & Classification Banner */}
               <div style={{
                 display: 'grid',

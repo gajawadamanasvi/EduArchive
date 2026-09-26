@@ -86,7 +86,9 @@ export const uploadDocument = async (req, res) => {
       run_ai_verification = 'true',
       is_original = false,
       custody_status = 'STORED_IN_COLLEGE_REPOSITORY',
-      locker_reference = ''
+      locker_reference = '',
+      custom_ocr_text = null,
+      sample_name = null
     } = req.body;
 
     if (req.user.role === 'STUDENT') {
@@ -117,11 +119,11 @@ export const uploadDocument = async (req, res) => {
 
     if (req.file) {
       filePath = req.file.path;
-      fileName = req.file.filename;
+      fileName = req.file.originalname || req.file.filename;
       fileSize = req.file.size;
       mimeType = req.file.mimetype;
     } else {
-      fileName = `${document_type.replace(/\s+/g, '_')}_${student.roll_number || 'DOC'}.pdf`;
+      fileName = sample_name || `${document_type.replace(/\s+/g, '_')}_${student.roll_number || 'DOC'}.pdf`;
       filePath = '';
       fileSize = 245000;
       mimeType = 'application/pdf';
@@ -158,23 +160,30 @@ export const uploadDocument = async (req, res) => {
           fileName,
           documentType: document_type,
           studentId: student.id,
-          collegeId
+          collegeId,
+          customOcrText: custom_ocr_text
         });
+
+        const isConsistent = aiResult.classification === 'CONSISTENT';
+        const isSuspicious = aiResult.classification === 'SUSPICIOUS_MISMATCH';
+
+        const verifStatus = isConsistent ? 'AI_CONSISTENT' : (isSuspicious ? 'NEEDS_REVIEW' : 'NEEDS_REVIEW');
+        const docStatus = isConsistent ? 'PENDING' : 'NEEDS_REVIEW';
 
         // Create verification record
         db.insert('verification_records', {
           document_id: newDoc.id,
           verified_by: req.user.id,
-          verification_status: aiResult.classification === 'CONSISTENT' ? 'AI_CONSISTENT' : 'NEEDS_REVIEW',
-          remarks: aiResult.recommendation,
+          verification_status: verifStatus,
+          remarks: isSuspicious ? `AI Identity Mismatch: ${aiResult.recommendation}` : aiResult.recommendation,
           ai_result: aiResult,
           verified_at: new Date().toISOString()
         });
 
-        // If high confidence, flag as NEEDS_REVIEW for fast one-click approval by admin
-        if (aiResult.classification === 'CONSISTENT') {
-          db.update('documents', newDoc.id, { status: 'PENDING' });
-        }
+        // Set document status accordingly
+        db.update('documents', newDoc.id, { 
+          status: docStatus 
+        });
       } catch (aiErr) {
         console.warn('[AI Verification Warning]:', aiErr.message);
       }
@@ -182,17 +191,21 @@ export const uploadDocument = async (req, res) => {
 
     await logAudit({
       userId: req.user.id,
-      action: 'DOCUMENT_UPLOADED',
+      action: aiResult?.classification === 'SUSPICIOUS_MISMATCH' ? 'AI_ANOMALY_DETECTED' : 'DOCUMENT_UPLOADED',
       entityType: 'DOCUMENT',
       entityId: newDoc.id,
-      details: { student_id, document_type, fileName, aiClassification: aiResult?.classification },
+      details: { student_id, document_type, fileName, aiClassification: aiResult?.classification, confidence: aiResult?.confidenceScore },
       ipAddress: req.ip
     });
 
     const fullDoc = db.getDocumentWithDetails(newDoc.id);
+    const hasMismatch = aiResult?.classification === 'SUSPICIOUS_MISMATCH' || aiResult?.fieldChecks?.some(fc => fc.status === 'MISMATCH');
+
     return res.status(201).json({
       success: true,
-      message: 'Certificate uploaded and queued for verification.',
+      hasMismatch,
+      warning: hasMismatch ? 'AI Detection: The uploaded certificate does not match the selected student.' : null,
+      message: hasMismatch ? 'Warning: Certificate details diverge from registered student profile.' : 'Certificate uploaded and queued for verification.',
       document: fullDoc,
       aiResult
     });
