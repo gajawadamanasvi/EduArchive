@@ -80,7 +80,8 @@ export const Chatbot = ({ isOpen, onToggle }) => {
         id: `ai_${Date.now()}`,
         sender: 'ai',
         text: data.reply || 'I am processing your request.',
-        actions: data.actions || []
+        actions: data.actions || [],
+        steps: data.steps || []
       };
       setMessages(prev => [...prev, aiMsg]);
     } catch (err) {
@@ -281,6 +282,32 @@ export const Chatbot = ({ isOpen, onToggle }) => {
                   }}>
                     {renderFormattedText(msg.text)}
                   </div>
+
+                  {/* Safe Agent Execution Steps */}
+                  {isAi && msg.steps && msg.steps.length > 0 && (
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4,
+                      maxWidth: '88%',
+                      padding: '6px 10px',
+                      borderRadius: 8,
+                      background: 'rgba(15, 23, 42, 0.5)',
+                      border: '1px solid rgba(139, 92, 246, 0.2)',
+                      fontSize: '0.72rem',
+                      color: 'var(--text-muted)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 700, color: '#a78bfa' }}>
+                        <Sparkles size={11} />
+                        <span>LangGraph Agent Trace</span>
+                      </div>
+                      {msg.steps.map((st, sIdx) => (
+                        <div key={sIdx} style={{ display: 'flex', alignItems: 'center', gap: 6, color: st.startsWith('⚠') ? '#fbbf24' : '#94a3b8' }}>
+                          <span>{st}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Deep-linking action buttons */}
                   {isAi && msg.actions && msg.actions.length > 0 && (

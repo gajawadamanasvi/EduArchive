@@ -6,29 +6,62 @@ import db from '../config/db.js';
  * and anomaly classification.
  */
 
-// Helper to normalize strings for robust fuzzy comparison
+// Helper to normalize strings for robust comparison
 const normalize = (str) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
 
-// Similarity ratio calculation
+// Levenshtein distance calculation
+const levenshteinDistance = (a, b) => {
+  const an = a ? a.length : 0;
+  const bn = b ? b.length : 0;
+  if (an === 0) return bn;
+  if (bn === 0) return an;
+  const matrix = Array.from({ length: bn + 1 }, (_, i) => [i]);
+  for (let j = 0; j <= an; j++) matrix[0][j] = j;
+  for (let i = 1; i <= bn; i++) {
+    for (let j = 1; j <= an; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[bn][an];
+};
+
+// Robust similarity ratio calculation
 const similarityRatio = (s1, s2) => {
   const str1 = normalize(s1);
   const str2 = normalize(s2);
   if (!str1 || !str2) return 0;
   if (str1 === str2) return 1.0;
-  if (str1.includes(str2) || str2.includes(str1)) return 0.95;
+  if (str1.includes(str2) || str2.includes(str1)) {
+    const minLen = Math.min(str1.length, str2.length);
+    const maxLen = Math.max(str1.length, str2.length);
+    if (minLen >= 4 && minLen / maxLen >= 0.7) {
+      return Math.max(0.85, minLen / maxLen);
+    }
+  }
 
+  // Word token matching for full names (e.g. "Aarav Sharma" vs "Aarav K Sharma")
   const words1 = (s1 || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   const words2 = (s2 || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   const set2 = new Set(words2);
-  const common = words1.filter(w => set2.has(w));
-  if (words1.length > 0 && common.length > 0) {
-    return Math.max(common.length / Math.max(words1.length, words2.length), 0.75);
+  const commonWords = words1.filter(w => set2.has(w));
+  if (words1.length > 0 && words2.length > 0 && commonWords.length > 0) {
+    const wordRatio = commonWords.length / Math.max(words1.length, words2.length);
+    if (wordRatio >= 0.5) return wordRatio;
   }
 
-  const setChar1 = new Set(str1.split(''));
-  const setChar2 = new Set(str2.split(''));
-  const intersection = [...setChar1].filter(x => setChar2.has(x));
-  return intersection.length / Math.max(setChar1.size, setChar2.size);
+  // Exact Levenshtein character edit distance
+  const dist = levenshteinDistance(str1, str2);
+  const maxLen = Math.max(str1.length, str2.length);
+  const sim = 1 - (dist / maxLen);
+  return Math.max(0, sim);
 };
 
 export const verifyDocumentWithAI = async ({
@@ -62,165 +95,56 @@ export const verifyDocumentWithAI = async ({
   // 3. Extract key entities using AI pattern recognition
   const extractedFields = extractCertificateFields(rawOcrText, documentType);
 
-  // 4. Cross-verify with authorized institutional database
+  // 4. Cross-verify exclusively by Student Name
   const checks = [];
-  let scorePoints = 0;
-  let maxPoints = 0;
-
-  // Check 1: Student Name
-  maxPoints += 25;
-  const officialName = student.user?.name || '';
+  const officialName = student.user?.name || student.name || '';
   const extractedName = extractedFields.studentName || '';
   const nameSim = similarityRatio(officialName, extractedName);
+
+  let confidencePercentage = 100;
+  let classification = 'CONSISTENT'; // 🟢 Consistent
+  let statusBadge = 'CONSISTENT';
+  let recommendation = 'Candidate name matches student registry records. Certificate verification approved.';
+
   if (nameSim >= 0.8) {
-    scorePoints += 25;
+    confidencePercentage = 98;
+    classification = 'CONSISTENT';
+    statusBadge = 'CONSISTENT';
+    recommendation = 'Candidate name matches student registry records. Certificate verification approved.';
     checks.push({
       field: 'Student Name',
       official: officialName,
       extracted: extractedName,
       status: 'MATCH',
-      confidence: Math.round(Math.max(nameSim, 0.98) * 100),
-      note: 'Student name matches official registry.'
+      confidence: 100,
+      note: 'Candidate name matches official student registry.'
     });
   } else if (nameSim >= 0.45) {
-    scorePoints += 12;
+    confidencePercentage = 65;
+    classification = 'NEEDS_MANUAL_REVIEW';
+    statusBadge = 'NEEDS_REVIEW';
+    recommendation = `Minor name discrepancy detected: Official '${officialName}' vs Certificate '${extractedName}'. Manual inspection recommended.`;
     checks.push({
       field: 'Student Name',
       official: officialName,
       extracted: extractedName,
       status: 'PARTIAL_MISMATCH',
       confidence: Math.round(nameSim * 100),
-      note: 'Minor spelling or formatting discrepancy detected in candidate name.'
+      note: 'Minor spelling variation detected in student name.'
     });
   } else {
+    confidencePercentage = Math.round(Math.max(nameSim * 100, 15));
+    classification = 'SUSPICIOUS_MISMATCH';
+    statusBadge = 'SUSPICIOUS';
+    recommendation = `Critical Name Mismatch: Scanned certificate belongs to '${extractedName}' instead of registered student '${officialName}'.`;
     checks.push({
       field: 'Student Name',
       official: officialName,
       extracted: extractedName,
       status: 'MISMATCH',
       confidence: Math.round(nameSim * 100),
-      note: 'Student name does NOT match registered student record.'
+      note: `Student name mismatch: Certificate has '${extractedName}' while registered student is '${officialName}'.`
     });
-  }
-
-  // Check 2: Roll Number / Registration ID
-  maxPoints += 30;
-  const officialRoll = student.roll_number || '';
-  const extractedRoll = extractedFields.rollNumber || '';
-  const rollSim = similarityRatio(officialRoll, extractedRoll);
-  if (rollSim >= 0.8) {
-    scorePoints += 30;
-    checks.push({
-      field: 'Roll Number / Reg No',
-      official: officialRoll,
-      extracted: extractedRoll,
-      status: 'MATCH',
-      confidence: 100,
-      note: 'Official roll number verified with zero variance.'
-    });
-  } else {
-    checks.push({
-      field: 'Roll Number / Reg No',
-      official: officialRoll,
-      extracted: extractedRoll,
-      status: 'MISMATCH',
-      confidence: Math.round(rollSim * 100),
-      note: `Mismatch detected: Official '${officialRoll}' vs Scanned '${extractedRoll}'.`
-    });
-  }
-
-  // Check 3: College / University Entity
-  maxPoints += 20;
-  const officialCollege = college ? college.name : (student.college ? student.college.name : '');
-  const extractedCollege = extractedFields.collegeName || '';
-  const collegeSim = similarityRatio(officialCollege, extractedCollege);
-  if (collegeSim >= 0.6) {
-    scorePoints += 20;
-    checks.push({
-      field: 'Issuing Institution',
-      official: officialCollege,
-      extracted: extractedCollege,
-      status: 'MATCH',
-      confidence: Math.round(Math.max(collegeSim, 0.96) * 100),
-      note: 'Issuing institution corresponds to registered college.'
-    });
-  } else {
-    checks.push({
-      field: 'Issuing Institution',
-      official: officialCollege,
-      extracted: extractedCollege,
-      status: 'MISMATCH',
-      confidence: Math.round(collegeSim * 100),
-      note: 'Institution name in scanned certificate diverges from student enrolment.'
-    });
-  }
-
-  // Check 4: Program / Course
-  maxPoints += 15;
-  const officialCourse = student.course || '';
-  const extractedCourse = extractedFields.course || '';
-  const courseSim = similarityRatio(officialCourse, extractedCourse);
-  if (courseSim >= 0.5) {
-    scorePoints += 15;
-    checks.push({
-      field: 'Degree / Course',
-      official: officialCourse,
-      extracted: extractedCourse,
-      status: 'MATCH',
-      confidence: Math.round(Math.max(courseSim, 0.95) * 100),
-      note: 'Academic course curriculum matches enrollment.'
-    });
-  } else {
-    scorePoints += 5;
-    checks.push({
-      field: 'Degree / Course',
-      official: officialCourse,
-      extracted: extractedCourse,
-      status: 'REVIEW',
-      confidence: Math.round(courseSim * 100),
-      note: 'Course title formatting differs from standardized program name.'
-    });
-  }
-
-  // Check 5: Document Integrity / Watermark & Stamp Check
-  maxPoints += 10;
-  if (extractedFields.hasSecuritySeal) {
-    scorePoints += 10;
-    checks.push({
-      field: 'Institutional Seal & Signature',
-      official: 'Required',
-      extracted: 'Detected & Validated',
-      status: 'MATCH',
-      confidence: 96,
-      note: 'Digital signature and registrar watermark pattern identified.'
-    });
-  } else {
-    checks.push({
-      field: 'Institutional Seal & Signature',
-      official: 'Required',
-      extracted: 'Unclear / Missing',
-      status: 'REVIEW',
-      confidence: 45,
-      note: 'Seal clarity is below optimal threshold; manual inspection recommended.'
-    });
-  }
-
-  // 5. Final Classification and Score
-  const confidencePercentage = Math.round((scorePoints / maxPoints) * 100);
-  let classification = 'CONSISTENT'; // 🟢 Consistent
-  let statusBadge = 'CONSISTENT';
-  let recommendation = 'Document passed AI cross-verification checks. Recommended for College Admin authorization.';
-
-  const hasCriticalMismatch = checks.some(c => (c.field === 'Student Name' || c.field === 'Roll Number / Reg No') && c.status === 'MISMATCH');
-
-  if (hasCriticalMismatch || confidencePercentage < 55) {
-    classification = 'SUSPICIOUS_MISMATCH'; // 🔴 Suspicious/Mismatch
-    statusBadge = 'SUSPICIOUS';
-    recommendation = 'Critical data discrepancies identified against official institutional registry. College Admin review and verification rejection advised unless verified against physical archives.';
-  } else if (confidencePercentage < 85 || checks.some(c => c.status === 'PARTIAL_MISMATCH' || c.status === 'REVIEW')) {
-    classification = 'NEEDS_MANUAL_REVIEW'; // 🟡 Needs Manual Review
-    statusBadge = 'NEEDS_REVIEW';
-    recommendation = 'Minor discrepancies or low OCR confidence on secondary attributes. Manual college staff review required before approval.';
   }
 
   const aiResult = {
@@ -232,7 +156,7 @@ export const verifyDocumentWithAI = async ({
     extractedFields,
     fieldChecks: checks,
     recommendation,
-    disclaimer: 'AI Document Verification assists authorized institutions. The AI does NOT claim absolute guarantee of authenticity; final verification authority remains exclusively with the issuing institution.'
+    disclaimer: 'AI Document Verification authenticates the candidate name against institutional records.'
   };
 
   return aiResult;
@@ -311,13 +235,54 @@ function extractCertificateFields(ocrText, docType) {
   };
 }
 
-// Generate realistic simulated OCR for demo uploads
-function generateSimulatedOCR({ documentType, fileName, student, college }) {
-  const isSuspicious = (fileName || '').toLowerCase().includes('mismatch') || (fileName || '').toLowerCase().includes('fake') || (fileName || '').toLowerCase().includes('suspicious');
-  const isNeedsReview = (fileName || '').toLowerCase().includes('review') || (fileName || '').toLowerCase().includes('partial') || (fileName || '').toLowerCase().includes('provisional');
+// Helper to extract candidate name from filename if present
+function extractNameFromFilename(fileName) {
+  if (!fileName) return null;
+  // Remove extension
+  const base = fileName.replace(/\.[^/.]+$/, '');
+  // Clean separators
+  const clean = base.replace(/[_\-\.]+/g, ' ').trim();
+  // Filter out non-name keywords
+  const nonNameWords = new Set([
+    'degree', 'certificate', 'provisional', 'marksheet', 'transcript', 'scan', 
+    'doc', 'document', 'pdf', 'jpg', 'png', 'final', 'copy', 'id', 'official', 
+    'verified', 'upload', 'test', 'sample', 'file', 'image', 'photo', 'camera',
+    'consistent', 'review', 'needs', 'partial'
+  ]);
 
-  const studentName = isSuspicious ? 'Alexander J. Mismatch' : (student.user?.name || 'Aarav Sharma');
-  const rollNo = isSuspicious ? 'SUSP-999-XYZ' : (student.roll_number || 'APEX/CS/22/0101');
+  const words = clean.split(/\s+/).filter(w => !nonNameWords.has(w.toLowerCase()) && !/^\d+$/.test(w));
+  if (words.length > 0) {
+    // Capitalize words
+    return words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+  }
+  return null;
+}
+
+// Generate realistic OCR for uploads
+function generateSimulatedOCR({ documentType, fileName, student, college, customOcrText }) {
+  if (customOcrText && customOcrText.trim().length > 10) {
+    return customOcrText;
+  }
+
+  const lowerFile = (fileName || '').toLowerCase();
+  const isSuspicious = lowerFile.includes('mismatch') || lowerFile.includes('fake') || lowerFile.includes('suspicious');
+  const isNeedsReview = lowerFile.includes('review') || lowerFile.includes('partial') || lowerFile.includes('provisional');
+
+  const officialName = student.user?.name || student.name || 'Aarav Sharma';
+  const nameInFile = extractNameFromFilename(fileName);
+
+  let studentName = officialName;
+  let rollNo = student.roll_number || 'APEX/CS/22/0101';
+
+  // If filename specifically contains another person's name (e.g. Manasvi uploaded for Aarav)
+  if (nameInFile && normalize(nameInFile) !== normalize(officialName) && nameInFile.length >= 3) {
+    studentName = nameInFile;
+    rollNo = `MISMATCH-REG-${Math.floor(1000 + Math.random() * 9000)}`;
+  } else if (isSuspicious) {
+    studentName = 'Alexander J. Mismatch';
+    rollNo = 'SUSP-999-XYZ';
+  }
+
   const collegeName = college?.name || student.college?.name || 'Apex Institute of Technology';
   const course = student.course || 'Bachelor of Technology in Computer Science';
 

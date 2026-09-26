@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../../services/api.js';
 import { AIVerificationModal } from '../../components/AIVerificationModal.jsx';
 import { CertificateViewerModal } from '../../components/CertificateViewerModal.jsx';
@@ -15,13 +15,20 @@ import {
   ArrowRight, 
   FileText,
   Camera,
-  ScanLine
+  ScanLine,
+  Eye,
+  Layers,
+  XCircle
 } from 'lucide-react';
 
 export const CollegeUpload = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const preselectedStudentId = queryParams.get('studentId');
+
   const [students, setStudents] = useState([]);
-  const [selectedStudentId, setSelectedStudentId] = useState('');
+  const [selectedStudentId, setSelectedStudentId] = useState(preselectedStudentId || '');
   const [documentType, setDocumentType] = useState('Degree Certificate');
   const [title, setTitle] = useState('');
   const [file, setFile] = useState(null);
@@ -31,6 +38,7 @@ export const CollegeUpload = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadedResult, setUploadedResult] = useState(null);
   const [selectedViewDoc, setSelectedViewDoc] = useState(null);
+  const [showInspectModal, setShowInspectModal] = useState(false);
   const [showCameraScanner, setShowCameraScanner] = useState(false);
   const [customOcrText, setCustomOcrText] = useState('');
   const [error, setError] = useState(null);
@@ -41,22 +49,29 @@ export const CollegeUpload = () => {
         const data = await api.getCollegeStudents();
         if (data.success && data.students?.length > 0) {
           setStudents(data.students);
-          setSelectedStudentId(data.students[0].id);
-          setTitle(`Degree Certificate - ${data.students[0].user?.name}`);
+          const initialId = preselectedStudentId && data.students.some(s => String(s.id) === String(preselectedStudentId))
+            ? preselectedStudentId
+            : data.students[0].id;
+          
+          setSelectedStudentId(initialId);
+          const initialStu = data.students.find(s => String(s.id) === String(initialId));
+          if (initialStu) {
+            setTitle(`Degree Certificate - ${initialStu.user?.name || initialStu.name}`);
+          }
         }
       } catch (err) {
         console.error('Failed to load students:', err);
       }
     };
     loadStudents();
-  }, []);
+  }, [preselectedStudentId]);
 
   const handleStudentChange = (e) => {
     const sId = e.target.value;
     setSelectedStudentId(sId);
     const stu = students.find(s => String(s.id) === String(sId));
     if (stu) {
-      setTitle(`${documentType} - ${stu.user?.name}`);
+      setTitle(`${documentType} - ${stu.user?.name || stu.name}`);
     }
   };
 
@@ -65,7 +80,7 @@ export const CollegeUpload = () => {
     setDocumentType(type);
     const stu = students.find(s => String(s.id) === String(selectedStudentId));
     if (stu) {
-      setTitle(`${type} - ${stu.user?.name}`);
+      setTitle(`${type} - ${stu.user?.name || stu.name}`);
     }
   };
 
@@ -90,7 +105,7 @@ export const CollegeUpload = () => {
         );
         if (matchingStu) {
           setSelectedStudentId(matchingStu.id);
-          setTitle(`${documentType} - ${matchingStu.user?.name}`);
+          setTitle(`${documentType} - ${matchingStu.user?.name || matchingStu.name}`);
         }
       }
     }
@@ -121,7 +136,9 @@ export const CollegeUpload = () => {
       formData.append('file', file);
     } else {
       // Use sample scenario flag in synthetic filename for demonstration
-      const simulatedName = `${documentType.replace(/\s+/g, '_')}_${sampleScenario}_scan.pdf`;
+      const simulatedName = sampleScenario === 'mismatch'
+        ? `${documentType.replace(/\s+/g, '_')}_mismatch_scan.pdf`
+        : (sampleScenario === 'needs_review' ? `${documentType.replace(/\s+/g, '_')}_provisional_review.pdf` : `${documentType.replace(/\s+/g, '_')}_clean_match.pdf`);
       formData.append('sample_name', simulatedName);
     }
 
@@ -148,7 +165,7 @@ export const CollegeUpload = () => {
           Upload & Verify Student Certificate
         </h2>
         <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-          Scan physical certificates and trigger real-time AI OCR extraction and database cross-checking
+          Scan physical certificates and trigger real-time LangGraph multi-agent OCR extraction and database cross-checking
         </p>
       </div>
 
@@ -188,13 +205,13 @@ export const CollegeUpload = () => {
               <div style={{ padding: '12px', borderRadius: 8, background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                 <div><strong>Program:</strong> {selectedStudent.course}</div>
                 <div><strong>Student ID:</strong> {selectedStudent.student_id_number}</div>
-                <div><strong>Email:</strong> {selectedStudent.user?.email}</div>
+                <div><strong>Roll Number:</strong> {selectedStudent.roll_number}</div>
               </div>
             )}
 
             <div>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                Certificate Type
+                Document Type
               </label>
               <select
                 value={documentType}
@@ -202,77 +219,77 @@ export const CollegeUpload = () => {
                 className="input-field"
               >
                 <option value="Degree Certificate">Degree Certificate</option>
-                <option value="10th Certificate">10th Certificate</option>
-                <option value="12th Certificate">12th Certificate</option>
-                <option value="Marksheet">Marksheet / Transcript</option>
-                <option value="Transfer Certificate">Transfer Certificate</option>
                 <option value="Provisional Certificate">Provisional Certificate</option>
+                <option value="Marksheet / Transcript">Marksheet / Transcript</option>
+                <option value="Transfer Certificate">Transfer Certificate (TC)</option>
+                <option value="Bonafide Certificate">Bonafide Certificate</option>
+                <option value="10th Secondary Certificate">10th Secondary Certificate</option>
+                <option value="12th Higher Secondary Certificate">12th Higher Secondary Certificate</option>
               </select>
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                Official Certificate Display Title
+                Document Title
               </label>
               <input
                 type="text"
-                required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="input-field"
+                required
               />
             </div>
 
-            {/* Original Physical Certificate Deposit Toggle */}
-            <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+            {/* Physical Custody Details */}
+            <div style={{ padding: '14px', borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)', display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <input
                   type="checkbox"
-                  id="origUploadCheck"
+                  id="isOriginalCheck"
                   checked={isOriginal}
                   onChange={(e) => setIsOriginal(e.target.checked)}
-                  style={{ width: 16, height: 16, accentColor: '#f59e0b', cursor: 'pointer' }}
+                  style={{ width: 16, height: 16, accentColor: '#3b82f6', cursor: 'pointer' }}
                 />
-                <label htmlFor="origUploadCheck" style={{ fontSize: '0.84rem', fontWeight: 700, color: '#fbbf24', cursor: 'pointer' }}>
-                  Original Physical Certificate Deposited in College Repository
+                <label htmlFor="isOriginalCheck" style={{ fontSize: '0.84rem', fontWeight: 600, color: '#f8fafc', cursor: 'pointer' }}>
+                  Original Physical Hardcopy Deposited in Vault
                 </label>
               </div>
 
               {isOriginal && (
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.76rem', color: 'var(--text-secondary)', marginBottom: 4 }}>
-                    Locker / Safe Vault Shelf Reference
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                    Vault / Locker Reference Location
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Locker Room A / Shelf 4 / Box 12"
+                    placeholder="e.g. Rack B, Cabinet 4, Binder 2024-CS"
                     value={lockerReference}
                     onChange={(e) => setLockerReference(e.target.value)}
                     className="input-field"
-                    style={{ fontSize: '0.82rem' }}
+                    style={{ fontSize: '0.8rem' }}
                   />
                 </div>
               )}
             </div>
           </div>
 
-          {/* Right Panel: File Upload & AI Simulation Scenarios */}
-          <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 18 }}>
-            <div>
-              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f8fafc', marginBottom: 12 }}>
-                Scan Upload & AI Verification
-              </h3>
+          {/* Right Panel: File Upload & Camera OCR */}
+          <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f8fafc' }}>
+              Certificate Source & AI Scanner
+            </h3>
 
-              {/* Live Camera Scanner Button */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              
+              {/* Camera Scanner Trigger */}
               <button
                 type="button"
                 onClick={() => setShowCameraScanner(true)}
                 className="btn-primary"
                 style={{
-                  width: '100%',
+                  background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
                   padding: '12px 16px',
-                  marginBottom: 14,
-                  background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -318,8 +335,14 @@ export const CollegeUpload = () => {
                 </div>
               </div>
 
+              {customOcrText && (
+                <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', fontSize: '0.78rem', color: '#c084fc' }}>
+                  <strong>OCR Text Attached:</strong> {customOcrText.slice(0, 100)}...
+                </div>
+              )}
+
               {/* Sample AI Test Mode Selection */}
-              <div style={{ marginTop: 16 }}>
+              <div style={{ marginTop: 8 }}>
                 <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.04em' }}>
                   Demo AI Test Scenarios
                 </label>
@@ -380,7 +403,7 @@ export const CollegeUpload = () => {
               style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)' }}
             >
               <Sparkles size={18} />
-              <span>{uploading ? 'Processing AI OCR Verification Scan...' : 'Upload & Execute AI Verification'}</span>
+              <span>{uploading ? 'Processing LangGraph AI Verification...' : 'Upload & Execute AI Verification'}</span>
             </button>
           </div>
 
@@ -388,19 +411,52 @@ export const CollegeUpload = () => {
       ) : (
         /* Upload Success & AI Scan Preview */
         <div className="glass-panel animate-fade-in" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: 20, border: '1px solid rgba(139, 92, 246, 0.4)' }}>
+          
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CheckCircle2 size={26} />
+            <div style={{ 
+              width: 44, 
+              height: 44, 
+              borderRadius: '50%', 
+              background: uploadedResult.aiResult?.classification === 'SUSPICIOUS_MISMATCH' ? 'rgba(244, 63, 94, 0.2)' : 'rgba(16, 185, 129, 0.2)', 
+              color: uploadedResult.aiResult?.classification === 'SUSPICIOUS_MISMATCH' ? '#fb7185' : '#34d399', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}>
+              {uploadedResult.aiResult?.classification === 'SUSPICIOUS_MISMATCH' ? <ShieldAlert size={26} /> : <CheckCircle2 size={26} />}
             </div>
             <div>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff' }}>
-                Certificate Uploaded & AI Verification Complete!
+                {uploadedResult.aiResult?.classification === 'SUSPICIOUS_MISMATCH' ? 'Certificate Uploaded • Verification Discrepancy Flagged' : 'Certificate Uploaded & AI Verification Complete!'}
               </h3>
               <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-                {uploadedResult.document?.title} has been archived in the repository.
+                {uploadedResult.document?.title} has been archived in the repository under student {selectedStudent?.user?.name || selectedStudent?.name}.
               </p>
             </div>
           </div>
+
+          {/* High-visibility Warning Banner for Mismatches */}
+          {uploadedResult.aiResult?.classification === 'SUSPICIOUS_MISMATCH' && (
+            <div style={{
+              padding: '16px',
+              borderRadius: 10,
+              background: 'rgba(244, 63, 94, 0.15)',
+              border: '2px solid rgba(244, 63, 94, 0.5)',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12
+            }}>
+              <ShieldAlert size={24} style={{ color: '#fb7185', flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <div style={{ fontWeight: 800, color: '#fb7185', fontSize: '0.96rem' }}>
+                  ⚠️ IDENTITY MISMATCH DETECTED (Score: {uploadedResult.aiResult?.confidenceScore}%)
+                </div>
+                <div style={{ fontSize: '0.84rem', color: '#fecdd3', marginTop: 4 }}>
+                  The candidate name on this uploaded certificate does NOT match registered student <strong>{selectedStudent?.user?.name}</strong>. The certificate has been flagged as <strong>NEEDS_REVIEW</strong> for administrator signoff.
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* AI Result Card */}
           {uploadedResult.aiResult && (
@@ -412,25 +468,61 @@ export const CollegeUpload = () => {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#f8fafc' }}>
-                  AI Verification Result: {uploadedResult.aiResult.classification} ({uploadedResult.aiResult.confidenceScore}%)
+                  Verdict: {uploadedResult.aiResult.classification} ({uploadedResult.aiResult.confidenceScore}%)
+                </span>
+                <span style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  padding: '3px 8px',
+                  borderRadius: 4,
+                  background: uploadedResult.aiResult.classification === 'CONSISTENT' ? 'rgba(16,185,129,0.2)' : 'rgba(244,63,94,0.2)',
+                  color: uploadedResult.aiResult.classification === 'CONSISTENT' ? '#34d399' : '#fb7185'
+                }}>
+                  {uploadedResult.aiResult.statusBadge}
                 </span>
               </div>
               <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: 10 }}>
                 {uploadedResult.aiResult.recommendation}
               </div>
+
+              {/* Field Checks */}
+              {uploadedResult.aiResult.fieldChecks?.length > 0 && (
+                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {uploadedResult.aiResult.fieldChecks.map((fc, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', padding: '6px 10px', background: 'rgba(0,0,0,0.2)', borderRadius: 6 }}>
+                      <span style={{ color: 'var(--text-primary)' }}>{fc.field}:</span>
+                      <span style={{ color: fc.status === 'MATCH' ? '#34d399' : '#fb7185', fontWeight: 600 }}>
+                        {fc.extracted} ({fc.status})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, borderTop: '1px solid var(--border-glass)', paddingTop: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, borderTop: '1px solid var(--border-glass)', paddingTop: 18, flexWrap: 'wrap' }}>
             <button
               onClick={() => {
                 setUploadedResult(null);
                 setFile(null);
+                setCustomOcrText('');
               }}
               className="btn-secondary"
             >
               Upload Another Document
             </button>
+            {uploadedResult.document && (
+              <button
+                type="button"
+                onClick={() => setShowInspectModal(true)}
+                className="btn-secondary"
+                style={{ borderColor: 'rgba(139, 92, 246, 0.4)', color: '#c084fc', display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <Sparkles size={16} />
+                <span>Full AI Inspector</span>
+              </button>
+            )}
             {uploadedResult.document && (
               <button
                 type="button"
@@ -457,6 +549,16 @@ export const CollegeUpload = () => {
         <CertificateViewerModal
           document={selectedViewDoc}
           onClose={() => setSelectedViewDoc(null)}
+        />
+      )}
+
+      {showInspectModal && uploadedResult?.document && (
+        <AIVerificationModal
+          document={uploadedResult.document}
+          aiResult={uploadedResult.aiResult}
+          onClose={() => setShowInspectModal(false)}
+          onStatusUpdated={() => {}}
+          isCollegeAdmin={true}
         />
       )}
 

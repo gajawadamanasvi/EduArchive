@@ -130,7 +130,11 @@ export const CollegeDashboard = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <Link to="/college/students" className="btn-secondary" style={{ padding: '10px 16px', borderRadius: 10, borderColor: 'rgba(59, 130, 246, 0.4)', color: '#60a5fa' }}>
+            <Users size={16} />
+            <span>+ Enroll Student</span>
+          </Link>
           <Link to="/college/upload" className="btn-primary" style={{ padding: '10px 18px', borderRadius: 10 }}>
             <FilePlus size={16} />
             <span>Upload Certificate</span>

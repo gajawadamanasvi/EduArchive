@@ -1,6 +1,7 @@
 import db from '../config/db.js';
 import { logAudit } from '../services/auditService.js';
 import { isTelanganaCollege } from '../utils/jurisdiction.js';
+import { hashPassword } from '../utils/security.js';
 
 export const getAllColleges = async (req, res) => {
   try {
@@ -93,7 +94,20 @@ export const getCollegeById = async (req, res) => {
 
 export const createCollege = async (req, res) => {
   try {
-    const { name, college_code, address, email, phone, website, university, state } = req.body;
+    const { 
+      name, 
+      college_code, 
+      address, 
+      email, 
+      phone, 
+      website, 
+      university, 
+      state,
+      admin_name,
+      admin_email,
+      admin_gmail,
+      admin_password
+    } = req.body;
 
     if (!name || !college_code || !email) {
       return res.status(400).json({ success: false, message: 'College name, code, and official email are required.' });
@@ -113,22 +127,59 @@ export const createCollege = async (req, res) => {
       phone: phone || '',
       website: website || '',
       university: university || 'Jawaharlal Nehru Technological University Hyderabad (JNTUH)',
-      verification_status: 'PENDING', // default pending until Super Admin verifies
-      verified_at: null,
-      verified_by: null,
+      verification_status: 'VERIFIED', // Verified directly by Super Admin
+      verified_at: new Date().toISOString(),
+      verified_by: req.user.id,
       logo_url: `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(college_code)}`
     });
 
+    // Create Dedicated College Admin Account with separate Gmail & Password
+    const cleanCode = college_code.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const collegeAdminName = (admin_name || `Prof. Dean (${college_code.toUpperCase()})`).trim();
+    const collegeAdminEmail = (admin_email || admin_gmail || `${cleanCode}.admin@gmail.com`).trim().toLowerCase();
+    const collegeAdminPassword = (admin_password || `${cleanCode}admin@123`).trim();
+
+    const password_hash = await hashPassword(collegeAdminPassword);
+
+    let adminUser = db.findOne('users', u => u.email.toLowerCase() === collegeAdminEmail);
+    if (!adminUser) {
+      adminUser = db.insert('users', {
+        name: collegeAdminName,
+        email: collegeAdminEmail,
+        password_hash,
+        role: 'COLLEGE_ADMIN',
+        status: 'ACTIVE',
+        college_id: newCollege.id,
+        avatar_url: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(collegeAdminName)}`
+      });
+    } else {
+      db.update('users', adminUser.id, {
+        college_id: newCollege.id,
+        role: 'COLLEGE_ADMIN',
+        password_hash
+      });
+    }
+
     await logAudit({
       userId: req.user.id,
-      action: 'COLLEGE_CREATED',
+      action: 'COLLEGE_CREATED_WITH_ADMIN',
       entityType: 'COLLEGE',
       entityId: newCollege.id,
-      details: { name, code: college_code, state: newCollege.state },
+      details: { name, code: college_code, state: newCollege.state, adminEmail: collegeAdminEmail },
       ipAddress: req.ip
     });
 
-    return res.status(201).json({ success: true, message: 'College created successfully in Telangana jurisdiction.', college: newCollege });
+    return res.status(201).json({ 
+      success: true, 
+      message: `College '${name}' created successfully in Telangana jurisdiction and administrator '${collegeAdminEmail}' activated.`, 
+      college: newCollege,
+      adminCredentials: {
+        name: collegeAdminName,
+        email: collegeAdminEmail,
+        password: collegeAdminPassword,
+        role: 'COLLEGE_ADMIN'
+      }
+    });
   } catch (error) {
     console.error('[CreateCollege Error]:', error);
     return res.status(500).json({ success: false, message: 'Failed to create college.' });
